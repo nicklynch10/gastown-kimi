@@ -46,7 +46,7 @@ type TownSettings struct {
 	CLITheme string `json:"cli_theme,omitempty"`
 
 	// DefaultAgent is the name of the agent preset to use by default.
-	// Can be a built-in preset ("claude", "gemini", "codex", "cursor", "auggie", "amp")
+	// Can be a built-in preset ("claude", "gemini", "codex", "cursor", "auggie", "amp", "kimi")
 	// or a custom agent name defined in settings/agents.json.
 	// Default: "claude"
 	DefaultAgent string `json:"default_agent,omitempty"`
@@ -219,7 +219,7 @@ type RigSettings struct {
 	Runtime    *RuntimeConfig    `json:"runtime,omitempty"`     // LLM runtime settings (deprecated: use Agent)
 
 	// Agent selects which agent preset to use for this rig.
-	// Can be a built-in preset ("claude", "gemini", "codex", "cursor", "auggie", "amp")
+	// Can be a built-in preset ("claude", "gemini", "codex", "cursor", "auggie", "amp", "kimi")
 	// or a custom agent defined in settings/agents.json.
 	// If empty, uses the town's default_agent setting.
 	// Takes precedence over Runtime if both are set.
@@ -478,6 +478,8 @@ func defaultRuntimeCommand(provider string) string {
 		return "codex"
 	case "opencode":
 		return "opencode"
+	case "kimi":
+		return "kimi"
 	case "generic":
 		return ""
 	default:
@@ -514,6 +516,8 @@ func defaultRuntimeArgs(provider string) []string {
 	switch provider {
 	case "claude":
 		return []string{"--dangerously-skip-permissions"}
+	case "kimi":
+		return []string{"--yolo"}
 	default:
 		return nil
 	}
@@ -525,6 +529,8 @@ func defaultPromptMode(provider string) string {
 		return "none"
 	case "opencode":
 		return "none"
+	case "kimi":
+		return "arg"
 	default:
 		return "arg"
 	}
@@ -534,12 +540,18 @@ func defaultSessionIDEnv(provider string) string {
 	if provider == "claude" {
 		return "CLAUDE_SESSION_ID"
 	}
+	if provider == "kimi" {
+		return "KIMI_SESSION_ID"
+	}
 	return ""
 }
 
 func defaultConfigDirEnv(provider string) string {
 	if provider == "claude" {
 		return "CLAUDE_CONFIG_DIR"
+	}
+	if provider == "kimi" {
+		return "KIMI_CONFIG_DIR"
 	}
 	return ""
 }
@@ -550,6 +562,8 @@ func defaultHooksProvider(provider string) string {
 		return "claude"
 	case "opencode":
 		return "opencode"
+	case "kimi":
+		return "kimi"
 	default:
 		return "none"
 	}
@@ -561,6 +575,8 @@ func defaultHooksDir(provider string) string {
 		return ".claude"
 	case "opencode":
 		return ".opencode/plugin"
+	case "kimi":
+		return ".kimi"
 	default:
 		return ""
 	}
@@ -572,6 +588,8 @@ func defaultHooksFile(provider string) string {
 		return "settings.json"
 	case "opencode":
 		return "gastown.js"
+	case "kimi":
+		return "settings.json"
 	default:
 		return ""
 	}
@@ -586,6 +604,9 @@ func defaultProcessNames(provider, command string) []string {
 		// tmux pane_current_command may show "node" or "opencode" depending on how invoked.
 		return []string{"opencode", "node"}
 	}
+	if provider == "kimi" {
+		return []string{"kimi"}
+	}
 	if command != "" {
 		return []string{filepath.Base(command)}
 	}
@@ -596,6 +617,10 @@ func defaultReadyPromptPrefix(provider string) string {
 	if provider == "claude" {
 		// Claude Code uses ❯ (U+276F) as the prompt character
 		return "❯ "
+	}
+	if provider == "kimi" {
+		// Kimi uses > as the prompt character
+		return "> "
 	}
 	return ""
 }
@@ -613,6 +638,11 @@ func defaultReadyDelayMs(provider string) int {
 		// 8000ms provides reliable startup detection across models.
 		return 8000
 	}
+	if provider == "kimi" {
+		// Kimi requires delay-based detection similar to OpenCode
+		// because its TUI uses special characters for the prompt.
+		return 8000
+	}
 	return 0
 }
 
@@ -621,6 +651,9 @@ func defaultInstructionsFile(provider string) string {
 		return "AGENTS.md"
 	}
 	if provider == "opencode" {
+		return "AGENTS.md"
+	}
+	if provider == "kimi" {
 		return "AGENTS.md"
 	}
 	return "CLAUDE.md"

@@ -310,6 +310,8 @@ Gas Town supports multiple AI coding runtimes. Per-rig runtime settings are in `
 - Claude uses hooks in `.claude/settings.json` for mail injection and startup.
 - For Codex, set `project_doc_fallback_filenames = ["CLAUDE.md"]` in
   `~/.codex/config.toml` so role instructions are picked up.
+- Kimi uses `.kimi/settings.json` for configuration and supports `--yolo` mode
+  for autonomous operation. Kimi uses `AGENTS.md` for role instructions.
 - For runtimes without hooks (e.g., Codex), Gas Town sends a startup fallback
   after the session is ready: `gt prime`, optional `gt mail check --inject`
   for autonomous roles, and `gt nudge deacon session-started`.
@@ -336,7 +338,7 @@ gt mayor start --agent auggie           # Run Mayor with a specific agent alias
 gt prime                    # Context recovery (run inside existing session)
 ```
 
-**Built-in agent presets**: `claude`, `gemini`, `codex`, `cursor`, `auggie`, `amp`
+**Built-in agent presets**: `claude`, `gemini`, `codex`, `cursor`, `auggie`, `amp`, `kimi`
 
 ### Convoy (Work Tracking)
 

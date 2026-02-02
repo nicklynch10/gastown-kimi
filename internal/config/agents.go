@@ -29,12 +29,14 @@ const (
 	AgentAmp AgentPreset = "amp"
 	// AgentOpenCode is OpenCode multi-model CLI.
 	AgentOpenCode AgentPreset = "opencode"
+	// AgentKimi is Kimi Code CLI (K2.5 and other models).
+	AgentKimi AgentPreset = "kimi"
 )
 
 // AgentPresetInfo contains the configuration details for an agent preset.
 // This extends the basic RuntimeConfig with agent-specific metadata.
 type AgentPresetInfo struct {
-	// Name is the preset identifier (e.g., "claude", "gemini", "codex", "cursor", "auggie", "amp").
+	// Name is the preset identifier (e.g., "claude", "gemini", "codex", "cursor", "auggie", "amp", "kimi").
 	Name AgentPreset `json:"name"`
 
 	// Command is the CLI binary to invoke.
@@ -202,6 +204,18 @@ var builtinPresets = map[AgentPreset]*AgentPresetInfo{
 			Subcommand: "run",
 			OutputFlag: "--format json",
 		},
+	},
+	AgentKimi: {
+		Name:                AgentKimi,
+		Command:             "kimi",
+		Args:                []string{"--yolo"}, // YOLO mode for autonomous operation
+		ProcessNames:        []string{"kimi"},   // Kimi CLI binary
+		SessionIDEnv:        "KIMI_SESSION_ID",  // Kimi sets this for session tracking
+		ResumeFlag:          "--continue",       // Use --continue to resume sessions
+		ResumeStyle:         "flag",
+		SupportsHooks:       true,               // Supports hooks via .kimi/settings.json
+		SupportsForkSession: false,
+		NonInteractive:      nil, // Kimi is native non-interactive like Claude
 	},
 }
 

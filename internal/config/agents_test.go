@@ -17,7 +17,7 @@ func isClaudeCmd(cmd string) bool {
 func TestBuiltinPresets(t *testing.T) {
 	t.Parallel()
 	// Ensure all built-in presets are accessible
-	presets := []AgentPreset{AgentClaude, AgentGemini, AgentCodex, AgentCursor, AgentAuggie, AgentAmp}
+	presets := []AgentPreset{AgentClaude, AgentGemini, AgentCodex, AgentCursor, AgentAuggie, AgentAmp, AgentKimi}
 
 	for _, preset := range presets {
 		info := GetAgentPreset(preset)
@@ -52,6 +52,7 @@ func TestGetAgentPresetByName(t *testing.T) {
 		{"amp", AgentAmp, false},
 		{"aider", "", true},               // Not built-in, can be added via config
 		{"opencode", AgentOpenCode, false}, // Built-in multi-model CLI agent
+		{"kimi", AgentKimi, false},         // Built-in Kimi Code CLI agent
 		{"unknown", "", true},
 	}
 
@@ -83,6 +84,7 @@ func TestRuntimeConfigFromPreset(t *testing.T) {
 		{AgentCursor, "cursor-agent"},
 		{AgentAuggie, "auggie"},
 		{AgentAmp, "amp"},
+		{AgentKimi, "kimi"},
 	}
 
 	for _, tt := range tests {
@@ -131,6 +133,7 @@ func TestIsKnownPreset(t *testing.T) {
 		{"amp", true},
 		{"aider", false},    // Not built-in, can be added via config
 		{"opencode", true},  // Built-in multi-model CLI agent
+		{"kimi", true},      // Built-in Kimi Code CLI agent
 		{"unknown", false},
 		{"chatgpt", false},
 	}
@@ -362,6 +365,7 @@ func TestGetSessionIDEnvVar(t *testing.T) {
 	}{
 		{"claude", "CLAUDE_SESSION_ID"},
 		{"gemini", "GEMINI_SESSION_ID"},
+		{"kimi", "KIMI_SESSION_ID"}, // Kimi sets KIMI_SESSION_ID
 		{"codex", ""},    // Codex uses JSONL output instead
 		{"cursor", ""},   // Cursor uses --resume with chatId directly
 		{"auggie", ""},   // Auggie uses --resume directly
@@ -391,6 +395,7 @@ func TestGetProcessNames(t *testing.T) {
 		{"auggie", []string{"auggie"}},
 		{"amp", []string{"amp"}},
 		{"opencode", []string{"opencode", "node", "bun"}},
+		{"kimi", []string{"kimi"}},
 		{"unknown", []string{"node", "claude"}}, // Falls back to Claude's process
 	}
 
@@ -413,7 +418,7 @@ func TestGetProcessNames(t *testing.T) {
 func TestListAgentPresetsMatchesConstants(t *testing.T) {
 	t.Parallel()
 	// Ensure all AgentPreset constants are returned by ListAgentPresets
-	allConstants := []AgentPreset{AgentClaude, AgentGemini, AgentCodex, AgentCursor, AgentAuggie, AgentAmp}
+	allConstants := []AgentPreset{AgentClaude, AgentGemini, AgentCodex, AgentCursor, AgentAuggie, AgentAmp, AgentKimi}
 	presets := ListAgentPresets()
 
 	// Convert to map for quick lookup
@@ -474,6 +479,11 @@ func TestAgentCommandGeneration(t *testing.T) {
 			preset:       AgentAmp,
 			wantCommand:  "amp",
 			wantContains: []string{"--dangerously-allow-all", "--no-ide"},
+		},
+		{
+			preset:       AgentKimi,
+			wantCommand:  "kimi",
+			wantContains: []string{"--yolo"},
 		},
 	}
 
@@ -776,5 +786,138 @@ func TestOpenCodeRuntimeConfigFromPreset(t *testing.T) {
 	original := GetAgentPreset(AgentOpenCode)
 	if _, exists := original.Env["MUTATED"]; exists {
 		t.Error("Mutation of RuntimeConfig.Env affected original preset")
+	}
+}
+
+func TestKimiAgentPreset(t *testing.T) {
+	t.Parallel()
+	// Verify Kimi agent preset is correctly configured
+	info := GetAgentPreset(AgentKimi)
+	if info == nil {
+		t.Fatal("kimi preset not found")
+	}
+
+	// Check command
+	if info.Command != "kimi" {
+		t.Errorf("kimi command = %q, want kimi", info.Command)
+	}
+
+	// Check Args (should have --yolo)
+	if len(info.Args) != 1 || info.Args[0] != "--yolo" {
+		t.Errorf("kimi args = %v, want [--yolo]", info.Args)
+	}
+
+	// Check ProcessNames for detection
+	if len(info.ProcessNames) != 1 || info.ProcessNames[0] != "kimi" {
+		t.Errorf("kimi ProcessNames = %v, want [kimi]", info.ProcessNames)
+	}
+
+	// Check SessionIDEnv
+	if info.SessionIDEnv != "KIMI_SESSION_ID" {
+		t.Errorf("kimi SessionIDEnv = %q, want KIMI_SESSION_ID", info.SessionIDEnv)
+	}
+
+	// Check resume support
+	if info.ResumeFlag != "--continue" {
+		t.Errorf("kimi ResumeFlag = %q, want --continue", info.ResumeFlag)
+	}
+	if info.ResumeStyle != "flag" {
+		t.Errorf("kimi ResumeStyle = %q, want flag", info.ResumeStyle)
+	}
+
+	// Check hooks support
+	if !info.SupportsHooks {
+		t.Error("kimi should support hooks")
+	}
+
+	// Check fork session (not supported)
+	if info.SupportsForkSession {
+		t.Error("kimi should not support fork session")
+	}
+
+	// NonInteractive should be nil (Kimi is native non-interactive)
+	if info.NonInteractive != nil {
+		t.Error("kimi NonInteractive should be nil")
+	}
+}
+
+func TestKimiProviderDefaults(t *testing.T) {
+	t.Parallel()
+
+	// Test defaultReadyDelayMs for kimi
+	delay := defaultReadyDelayMs("kimi")
+	if delay != 8000 {
+		t.Errorf("defaultReadyDelayMs(kimi) = %d, want 8000", delay)
+	}
+
+	// Test defaultProcessNames for kimi
+	names := defaultProcessNames("kimi", "kimi")
+	if len(names) != 1 || names[0] != "kimi" {
+		t.Errorf("defaultProcessNames(kimi) = %v, want [kimi]", names)
+	}
+
+	// Test defaultInstructionsFile for kimi
+	instFile := defaultInstructionsFile("kimi")
+	if instFile != "AGENTS.md" {
+		t.Errorf("defaultInstructionsFile(kimi) = %q, want AGENTS.md", instFile)
+	}
+
+	// Test defaultHooksProvider for kimi
+	hooksProvider := defaultHooksProvider("kimi")
+	if hooksProvider != "kimi" {
+		t.Errorf("defaultHooksProvider(kimi) = %q, want kimi", hooksProvider)
+	}
+
+	// Test defaultHooksDir for kimi
+	hooksDir := defaultHooksDir("kimi")
+	if hooksDir != ".kimi" {
+		t.Errorf("defaultHooksDir(kimi) = %q, want .kimi", hooksDir)
+	}
+
+	// Test defaultSessionIDEnv for kimi
+	sessionEnv := defaultSessionIDEnv("kimi")
+	if sessionEnv != "KIMI_SESSION_ID" {
+		t.Errorf("defaultSessionIDEnv(kimi) = %q, want KIMI_SESSION_ID", sessionEnv)
+	}
+}
+
+func TestKimiRuntimeConfigFromPreset(t *testing.T) {
+	t.Parallel()
+	rc := RuntimeConfigFromPreset(AgentKimi)
+	if rc == nil {
+		t.Fatal("RuntimeConfigFromPreset(kimi) returned nil")
+	}
+
+	// Check command
+	if rc.Command != "kimi" {
+		t.Errorf("RuntimeConfig.Command = %q, want kimi", rc.Command)
+	}
+
+	// Check Args
+	if len(rc.Args) != 1 || rc.Args[0] != "--yolo" {
+		t.Errorf("RuntimeConfig.Args = %v, want [--yolo]", rc.Args)
+	}
+}
+
+func TestKimiBuildResumeCommand(t *testing.T) {
+	t.Parallel()
+	// Test Kimi resume command generation
+	result := BuildResumeCommand("kimi", "test-session-123")
+	if result == "" {
+		t.Error("BuildResumeCommand(kimi, test-session-123) returned empty string")
+	}
+
+	// Check that the command contains expected parts
+	if !strings.Contains(result, "kimi") {
+		t.Errorf("BuildResumeCommand result missing 'kimi': %q", result)
+	}
+	if !strings.Contains(result, "--yolo") {
+		t.Errorf("BuildResumeCommand result missing '--yolo': %q", result)
+	}
+	if !strings.Contains(result, "--continue") {
+		t.Errorf("BuildResumeCommand result missing '--continue': %q", result)
+	}
+	if !strings.Contains(result, "test-session-123") {
+		t.Errorf("BuildResumeCommand result missing session ID: %q", result)
 	}
 }
