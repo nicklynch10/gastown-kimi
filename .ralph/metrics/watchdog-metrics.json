@@ -1,0 +1,18 @@
+﻿{
+    "config":  {
+                   "maxRestarts":  5,
+                   "staleThreshold":  30,
+                   "watchInterval":  300
+               },
+    "uptime":  7.2184499999999993E-05,
+    "timestamp":  "2026-02-03T08:44:08.2416273-05:00",
+    "metrics":  {
+                    "Nudges":  0,
+                    "Restarts":  0,
+                    "Runs":  1,
+                    "Failures":  0,
+                    "BeadsProcessed":  0,
+                    "AlertsSent":  0
+                },
+    "version":  "1.1.0-PROD"
+}

@@ -2,87 +2,42 @@
 
 > **For AI Agents:** This file contains setup and development information for working with this codebase.
 
-## 📋 Prerequisites (Required Before Use)
+## Quick Agent Setup (5 Minutes)
 
-Before using this SDLC system, ensure you have:
-
-### Required Tools
-
-| Tool | Version | Purpose | Install Command |
-|------|---------|---------|-----------------|
-| PowerShell | 5.1+ | Script execution | Included with Windows |
-| Git | Latest | Version control | `winget install Git.Git` |
-| Kimi CLI | Latest | AI execution | `pip install kimi-cli` |
-
-### Optional Tools
-
-| Tool | Purpose | Install Command |
-|------|---------|-----------------|
-| Gastown CLI (gt) | Town management | `go install github.com/nicklynch10/gastown-cli/cmd/gt@latest` |
-| Beads CLI (bd) | Bead operations | `go install github.com/nicklynch10/beads-cli/cmd/bd@latest` |
-| Go | Building Gastown | `winget install GoLang.Go` |
-| Node.js | Browser testing | `winget install OpenJS.NodeJS` |
-
-### Verify Prerequisites
+### 1. Validate System Works
 
 ```powershell
-# Check all prerequisites
-.\scripts\ralph\ralph-prereq-check.ps1
-
-# Should show: All required tools found
-```
-
-### Fix Common Issues
-
-**PowerShell Execution Policy:**
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-
-**Git Configuration:**
-```powershell
-git config --global user.name "Your Name"
-git config --global user.email "your@email.com"
-```
-
----
-
-## 🚀 Quick Start for New Agents (5 Minutes)
-
-### Step 1: Validate System Works
-
-```powershell
-# Run the comprehensive test suite
+# Run comprehensive test suite
 .\scripts\ralph\test\ralph-system-test.ps1 -TestType all
 
-# Expected: 42 tests pass, 0 fail
+# Expected: 48+ tests pass, 0 fail
 ```
 
-### Step 2: Run Comprehensive Tests
+### 2. Run Live Tests
 
 ```powershell
-# Run all tests including functional
-.\scripts\ralph\test\ralph-comprehensive-test.ps1
+# Tests actual operations (creates files, runs commands)
+.\scripts\ralph\test\ralph-live-test.ps1
 
-# Expected: All tests pass (some may skip if optional tools missing)
+# Expected: 26/26 tests pass
 ```
 
-### Step 3: Test Demo Application
+### 3. Run Full Validation
 
 ```powershell
-cd examples/ralph-demo
-.\test.ps1
+# Complete validation with 56 tests
+.\scripts\ralph\ralph-validate.ps1
 
-# Expected: 5/5 tests pass
+# Expected: 56/56 tests pass
 ```
 
-### Step 4: You're Ready!
+### 4. You're Ready!
 
-If all tests pass, the system is operational. See [Usage Guide](#usage-guide) below.
+If all tests pass, the system is operational.
 
 ---
 
-## 📋 Repository Overview
+## Project Overview
 
 This is **Gastown** with full **Ralph-Gastown integration** - a Windows-native AI agent orchestration system.
 
@@ -95,263 +50,106 @@ This is **Gastown** with full **Ralph-Gastown integration** - a Windows-native A
 
 ---
 
-## 🗂️ Project Structure
+## Repository Structure
 
 ```
 gastown-kimi/
-├── cmd/gt/                    # Main CLI entry point (Go)
-├── internal/                  # Go internal packages
-│   ├── config/               # Agent presets
-│   ├── cmd/                  # CLI commands
-│   ├── polecat/              # Agent session management
-│   └── rig/                  # Repository/workspace management
-│
-├── scripts/ralph/            # ⭐ RALPH INTEGRATION SCRIPTS
-│   ├── ralph-master.ps1      # Main control interface
-│   ├── ralph-executor.ps1    # Full-featured executor
+├── scripts/ralph/              # Core Ralph scripts
+│   ├── ralph-master.ps1        # Main control interface
+│   ├── ralph-executor.ps1      # Full-featured executor
 │   ├── ralph-executor-simple.ps1  # Lightweight executor
-│   ├── ralph-governor.ps1    # Policy enforcement
-│   ├── ralph-watchdog.ps1    # Always-on monitoring
-│   ├── ralph-setup.ps1       # One-command SDLC setup
-│   ├── ralph-validate.ps1    # E2E validation
-│   ├── ralph-browser.psm1    # Browser testing module
-│   ├── ralph-resilience.psm1 # Error handling module
+│   ├── ralph-governor.ps1      # Policy enforcement
+│   ├── ralph-watchdog.ps1      # Always-on monitoring
+│   ├── ralph-setup.ps1         # One-command SDLC setup
+│   ├── ralph-validate.ps1      # E2E validation
+│   ├── ralph-browser.psm1      # Browser testing module
+│   ├── ralph-resilience.psm1   # Error handling module
+│   ├── setup-watchdog.ps1      # Watchdog installer
+│   ├── manage-watchdog.ps1     # Watchdog management
 │   └── test/
-│       ├── ralph-system-test.ps1  # Comprehensive tests
-│       └── ralph-live-test.ps1    # Live material tests
+│       ├── ralph-system-test.ps1
+│       ├── ralph-live-test.ps1
+│       └── ralph-comprehensive-test.ps1
 │
 ├── .beads/
-│   ├── formulas/             # Ralph molecules
+│   ├── formulas/               # Ralph molecules
 │   │   ├── molecule-ralph-work.formula.toml
 │   │   ├── molecule-ralph-patrol.formula.toml
 │   │   └── molecule-ralph-gate.formula.toml
 │   └── schemas/
 │       └── ralph-bead.schema.json
 │
-├── examples/ralph-demo/      # Working demo app
-│   ├── Calculator.psm1
-│   ├── test.ps1
-│   └── bead-gt-demo-calc-001.json
+├── examples/
+│   ├── ralph-demo/             # Calculator demo app
+│   │   ├── Calculator.psm1
+│   │   ├── test.ps1
+│   │   └── bead-gt-demo-calc-001.json
+│   └── taskmanager-app/        # Full Task Manager example
+│       ├── TaskManager.psm1
+│       ├── tests/
+│       └── beads/
 │
-└── docs/                     # Documentation
+├── docs/
+│   ├── guides/                 # User guides
+│   │   ├── QUICKSTART.md
+│   │   ├── SETUP.md
+│   │   └── QUICK_REFERENCE.md
+│   ├── reference/              # Technical docs
+│   │   ├── RALPH_INTEGRATION.md
+│   │   └── KIMI_INTEGRATION.md
+│   └── reports/                # Test reports
+│
+├── cmd/gt/                     # Gastown CLI (Go)
+├── internal/                   # Go internal packages
+└── tests/                      # Additional tests
 ```
 
 ---
 
-## 🧪 Testing (Agent's Best Friend)
+## Working with Ralph Scripts
 
-### 1. System Test Suite (Static Tests)
-
-Tests script parsing, compatibility, structure:
+### Key Commands
 
 ```powershell
-# All tests
-.\scripts\ralph\test\ralph-system-test.ps1 -TestType all
+# Master control
+.\scripts\ralph\ralph-master.ps1 -Command <command>
 
-# Just unit tests
-.\scripts\ralph\test\ralph-system-test.ps1 -TestType unit
-
-# Just integration tests
-.\scripts\ralph\test\ralph-system-test.ps1 -TestType integration
+# Available commands:
+#   init [-Rig <rig>]           Initialize Ralph in current town
+#   status                      Show Ralph-Gastown status
+#   run -Bead <id>              Run Ralph executor on a bead
+#   patrol [-Rig <rig>]         Start patrol molecule
+#   govern [-Convoy <id>]       Check/apply governor policies
+#   watchdog                    Start watchdog monitor
+#   verify                      Verify integration health
+#   create-bead -Intent <text>  Create a new Ralph bead
+#   create-gate -Type <type>    Create a gate bead
+#   help                        Show help
 ```
 
-**What it tests:**
-- All scripts parse correctly
-- PowerShell 5.1 compatibility
-- Formula files are valid
-- Schema is valid JSON
-- Demo app files exist
-
-### 2. Live Material Test (Real Operations)
-
-Tests actual execution (creates files, runs commands):
+### Watchdog Management
 
 ```powershell
-.\scripts\ralph\test\ralph-live-test.ps1
+# Check status
+.\scripts\ralph\manage-watchdog.ps1 -Action status
 
-# Keep artifacts for inspection
-.\scripts\ralph\test\ralph-live-test.ps1 -KeepTestArtifacts -Verbose
-```
-
-**What it tests:**
-- Core script execution
-- Bead creation and validation
-- Real verifier execution
-- Ralph executor dry-run
-- Resilience module functions
-- Browser module loading
-- Demo application
-- Formula validation
-
-### 3. Validation Script
-
-End-to-end validation with detailed reporting:
-
-```powershell
-# Console output
-.\scripts\ralph\ralph-validate.ps1 -Detailed
-
-# JSON output
-.\scripts\ralph\ralph-validate.ps1 -OutputFormat json
-
-# Markdown report
-.\scripts\ralph\ralph-validate.ps1 -OutputFormat markdown
-```
-
-### 4. Demo Application
-
-```powershell
-cd examples/ralph-demo
-
-# Run tests
-.\test.ps1
-
-# Use calculator
-.\ralph-demo.ps1 -Operation add -A 5 -B 3
+# Start/stop/restart
+.\scripts\ralph\manage-watchdog.ps1 -Action stop
+.\scripts\ralph\manage-watchdog.ps1 -Action start
+.\scripts\ralph\manage-watchdog.ps1 -Action restart
 ```
 
 ---
 
-## 🎯 Usage Guide
+## Ralph Bead Contract
 
-### Ralph Master Script
-
-Main control interface for Ralph operations:
-
-```powershell
-# Get help
-.\scripts\ralph\ralph-master.ps1 -Command help
-
-# Check system status
-.\scripts\ralph\ralph-master.ps1 -Command status
-
-# Create a new bead
-.\scripts\ralph\ralph-master.ps1 -Command create-bead -Intent "Fix login bug"
-
-# Run executor on a bead
-.\scripts\ralph\ralph-master.ps1 -Command run -Bead gt-abc123
-
-# Check governance
-.\scripts\ralph\ralph-master.ps1 -Command govern
-
-# Start watchdog
-.\scripts\ralph\ralph-master.ps1 -Command watchdog
-```
-
-### Ralph Executor
-
-Core retry-loop with DoD enforcement:
-
-```powershell
-# Full executor
-.\scripts\ralph\ralph-executor.ps1 -BeadId "gt-abc123" -MaxIterations 10
-
-# Simple executor
-.\scripts\ralph\ralph-executor-simple.ps1 -BeadId "gt-abc123" -DryRun
-```
-
-### Ralph Governor
-
-Policy enforcement ("no green, no features"):
-
-```powershell
-# Check gate status
-.\scripts\ralph\ralph-governor.ps1 -Action check
-
-# Check specific convoy
-.\scripts\ralph\ralph-governor.ps1 -Action check -ConvoyId "convoy-abc"
-
-# Show status
-.\scripts\ralph\ralph-governor.ps1 -Action status
-
-# Enforce policies
-.\scripts\ralph\ralph-governor.ps1 -Action enforce
-
-# Sling with policy check
-.\scripts\ralph\ralph-governor.ps1 -Action sling -BeadId "gt-feature" -Rig "myproject"
-```
-
-### Ralph Watchdog
-
-Always-on monitoring:
-
-```powershell
-# Run once (for testing)
-.\scripts\ralph\ralph-watchdog.ps1 -RunOnce -DryRun
-
-# Run continuously
-.\scripts\ralph\ralph-watchdog.ps1 -WatchInterval 60
-```
-
-### One-Command Setup
-
-Set up a new project with Ralph SDLC:
-
-```powershell
-# Basic setup
-.\scripts\ralph\ralph-setup.ps1 -ProjectName "myapp" -ProjectType go
-
-# With browser tests
-.\scripts\ralph\ralph-setup.ps1 -ProjectName "webapp" -ProjectType node -WithBrowserTests -WithPatrol
-```
-
-### Browser Testing Module
-
-Context-efficient browser testing:
-
-```powershell
-# Load module
-Import-Module .\scripts\ralph\ralph-browser.psm1
-
-# Create test context
-$ctx = New-BrowserTestContext -TestName "smoke" -BaseUrl "http://localhost:3000"
-
-# Run performance test
-$result = Test-PagePerformance -Context $ctx -Path "/"
-
-# Check results
-if ($result.Success) {
-    Write-Host "Load time: $($result.performance.metrics.loadTime)ms"
-}
-
-# Run accessibility test
-$a11y = Test-PageAccessibility -Context $ctx -Path "/login"
-```
-
-### Resilience Module
-
-Error handling and retry logic:
-
-```powershell
-# Load module
-Import-Module .\scripts\ralph\ralph-resilience.psm1
-
-# Retry with backoff
-$result = Invoke-WithRetry -ScriptBlock {
-    # Your code here
-    Invoke-SomeOperation
-} -MaxRetries 5 -InitialBackoffSeconds 10
-
-# Circuit breaker
-$result = Invoke-WithCircuitBreaker -Name "api" -ScriptBlock {
-    Call-ExternalAPI
-} -FailureThreshold 3 -TimeoutSeconds 60
-
-# Resilient process
-$result = Start-ResilientProcess -FilePath "git" -Arguments "clone ..." -TimeoutSeconds 120
-```
-
----
-
-## 🔧 Ralph Bead Contract
-
-Beads define work with Definition of Done:
+### Structure
 
 ```json
 {
   "id": "gt-feature-001",
-  "title": "Implement user authentication",
-  "intent": "Add JWT-based authentication to the API",
+  "title": "Implement feature",
+  "intent": "Behavior-level change description",
   "dod": {
     "verifiers": [
       {
@@ -359,12 +157,6 @@ Beads define work with Definition of Done:
         "command": "go build ./...",
         "expect": {"exit_code": 0},
         "timeout_seconds": 60
-      },
-      {
-        "name": "Unit tests pass",
-        "command": "go test ./auth/...",
-        "expect": {"exit_code": 0},
-        "timeout_seconds": 120
       }
     ],
     "evidence_required": true
@@ -382,24 +174,25 @@ Beads define work with Definition of Done:
 }
 ```
 
-**Required fields:**
+### Required Fields
+
 - `intent` - What needs to be done
 - `dod.verifiers` - List of verification commands
 
-**Verifier structure:**
+### Verifier Structure
+
 - `name` - Human-readable name
 - `command` - PowerShell command to execute
 - `expect.exit_code` - Expected exit code (default: 0)
-- `expect.stdout_contains` - Optional string to check in output
+- `expect.stdout_contains` - Optional string to check
 - `timeout_seconds` - Timeout (default: 300)
 
 ---
 
-## 🏗️ Development Guidelines
+## Development Guidelines
 
-### Adding New Scripts
+### PowerShell Script Structure
 
-1. **Use proper PowerShell structure:**
 ```powershell
 #!/usr/bin/env pwsh
 <#
@@ -425,15 +218,21 @@ $ErrorActionPreference = "Stop"
 # Your code here
 ```
 
-2. **Maintain PS5.1 compatibility:**
-   - No `??` (null coalescing)
-   - No `?.` (null conditional)
-   - No `??=` (null coalescing assignment)
-   - Use ASCII characters only (no box drawing)
+### PowerShell 5.1 Compatibility
 
-3. **Add to test suite:**
-   - Add parsing test to `ralph-system-test.ps1`
-   - Add functional test to `ralph-live-test.ps1`
+**AVOID these PS7-only features:**
+- `??` null coalescing operator
+- `?.` null conditional member access
+- `??=` null coalescing assignment
+
+**Use instead:**
+```powershell
+# Instead of: $timeout = $verifier.timeout ?? 300
+$timeout = if ($verifier.timeout) { $verifier.timeout } else { 300 }
+
+# Instead of: $value = $obj?.property
+$value = if ($obj) { $obj.property } else { $null }
+```
 
 ### Testing Changes
 
@@ -461,42 +260,111 @@ foreach ($s in $scripts) {
 # 4. Test demo
 .\examples\ralph-demo\test.ps1
 
-# 5. Validate
+# 5. Run full validation
 .\scripts\ralph\ralph-validate.ps1
 ```
 
 ---
 
-## 🪟 Windows Compatibility
+## Module Usage
 
-- **Windows-native PowerShell** - No WSL or bash required
-- **PowerShell 5.1+ compatible** - Avoid PS7-only syntax
-- **Standard Windows APIs** - Uses .NET Framework
+### Browser Testing Module
 
-**PS5.1 Compatibility Check:**
 ```powershell
-# Check for problematic operators
-$content = Get-Content "your-script.ps1" -Raw
-if ($content -match '\$\w+\?\?\s') { Write-Host "Contains ?? operator" }
-if ($content -match '\$\w+\?\.') { Write-Host "Contains ?. operator" }
+Import-Module .\scripts\ralph\ralph-browser.psm1
+
+# Create test context
+$ctx = New-BrowserTestContext -TestName "smoke" -BaseUrl "http://localhost:3000"
+
+# Run performance test
+$result = Test-PagePerformance -Context $ctx -Path "/"
+
+# Check results
+if ($result.Success) {
+    Write-Host "Load time: $($result.performance.metrics.loadTime)ms"
+}
+```
+
+### Resilience Module
+
+```powershell
+Import-Module .\scripts\ralph\ralph-resilience.psm1
+
+# Retry with backoff
+$result = Invoke-WithRetry -ScriptBlock {
+    Invoke-SomeOperation
+} -MaxRetries 5 -InitialBackoffSeconds 10
+
+# Circuit breaker
+$result = Invoke-WithCircuitBreaker -Name "api" -ScriptBlock {
+    Call-ExternalAPI
+} -FailureThreshold 3 -TimeoutSeconds 60
 ```
 
 ---
 
-## 📚 Documentation Files
+## Testing
 
-| File | Purpose |
-|------|---------|
-| `README.md` | Main user documentation |
-| `QUICKSTART.md` | Quick start guide |
-| `RALPH_INTEGRATION.md` | Detailed integration guide |
-| `RALPH_SYSTEM_VALIDATION.md` | Validation results |
-| `RALPH_FINAL_REPORT.md` | Implementation report |
-| `AGENTS.md` | This file |
+### Test Types
+
+| Test | Command | Purpose |
+|------|---------|---------|
+| System | `ralph-system-test.ps1` | Script parsing, compatibility |
+| Live | `ralph-live-test.ps1` | Real operations, file creation |
+| Comprehensive | `ralph-comprehensive-test.ps1` | Full test suite |
+| Validation | `ralph-validate.ps1` | E2E validation (56 tests) |
+
+### Running Tests
+
+```powershell
+# System tests
+.\scripts\ralph\test\ralph-system-test.ps1 -TestType all
+
+# Live tests (creates actual files)
+.\scripts\ralph\test\ralph-live-test.ps1 -Verbose
+
+# Comprehensive
+.\scripts\ralph\test\ralph-comprehensive-test.ps1
+
+# Full validation
+.\scripts\ralph\ralph-validate.ps1 -Detailed
+```
 
 ---
 
-## 🆘 Troubleshooting
+## Examples
+
+### Ralph Demo (Calculator)
+
+```powershell
+cd examples/ralph-demo
+
+# Run tests
+.\test.ps1
+
+# Use calculator
+.\ralph-demo.ps1 -Operation add -A 5 -B 3
+```
+
+### Task Manager App
+
+```powershell
+cd examples/taskmanager-app
+
+# Run tests
+.\tests\Simple.Tests.ps1
+
+# Import module
+Import-Module .\TaskManager.psm1
+
+# Use task manager
+Add-Task -Title "Buy groceries" -Priority high
+Get-Tasks -Status pending
+```
+
+---
+
+## Troubleshooting
 
 ### Scripts Won't Parse
 
@@ -505,7 +373,7 @@ if ($content -match '\$\w+\?\.') { Write-Host "Contains ?. operator" }
 $content = Get-Content "script.ps1"
 $content[89]  # Line 90 (0-indexed)
 
-# Check for special characters (box drawing, etc.)
+# Check for special characters
 $content | ForEach-Object { 
     $line = $_
     $unusual = $line.ToCharArray() | Where-Object { $_ -gt 127 }
@@ -522,7 +390,7 @@ $content | ForEach-Object {
 
 2. **Check PowerShell version:**
    ```powershell
-   $PSVersionTable.PSVersion  # Must be 5.1 or higher
+   $PSVersionTable.PSVersion  # Must be 5.1+
    ```
 
 3. **Check execution policy:**
@@ -535,44 +403,49 @@ $content | ForEach-Object {
    .\script.ps1 -Verbose
    ```
 
-5. **Review test artifacts:**
-   ```powershell
-   Get-ChildItem .ralph/live-test-* | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-   ```
+### Watchdog Issues
 
-### Missing Commands
-
-| Command | Install | Priority |
-|---------|---------|----------|
-| `gt` | `go install github.com/nicklynch10/gastown-cli/cmd/gt@latest` | Optional |
-| `bd` | `go install github.com/nicklynch10/beads-cli/cmd/bd@latest` | Optional |
-| `kimi` | `pip install kimi-cli` | **Required** |
-| `go` | `winget install GoLang.Go` | Optional |
-
-### Common Error Messages
-
-**"The term 'kimi' is not recognized"**
 ```powershell
-# Fix: Install Kimi CLI
-pip install kimi-cli
-# Restart PowerShell after installation
-```
+# Check if scheduled task exists
+Get-ScheduledTask -TaskName "RalphWatchdog" -ErrorAction SilentlyContinue
 
-**"Execution of scripts is disabled"**
-```powershell
-# Fix: Set execution policy
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
+# Check recent runs
+Get-ScheduledTaskInfo -TaskName "RalphWatchdog"
 
-**"Cannot find path '.beads/formulas/...'"**
-```powershell
-# Fix: Run from project root
-Set-Location C:\Users\Nick Lynch\Desktop\Coding Projects\KimiGasTown
+# View watchdog logs
+Get-Content .\ralph\logs\watchdog.log -Tail 20
 ```
 
 ---
 
-## 🔗 External Dependencies
+## Quick Reference Card
+
+```powershell
+# VALIDATE SYSTEM
+.\scripts\ralph\test\ralph-system-test.ps1
+.\scripts\ralph\test\ralph-live-test.ps1
+.\scripts\ralph\ralph-validate.ps1
+
+# BASIC OPERATIONS
+.\scripts\ralph\ralph-master.ps1 -Command status
+.\scripts\ralph\ralph-master.ps1 -Command create-bead -Intent "task"
+.\scripts\ralph\ralph-master.ps1 -Command run -Bead <id>
+.\scripts\ralph\ralph-master.ps1 -Command govern
+
+# WATCHDOG
+.\scripts\ralph\manage-watchdog.ps1 -Action status
+.\scripts\ralph\manage-watchdog.ps1 -Action restart
+
+# TEST DEMO
+.\examples\ralph-demo\test.ps1
+
+# VALIDATE
+.\scripts\ralph\ralph-validate.ps1 -Detailed
+```
+
+---
+
+## External Dependencies
 
 **Optional but recommended:**
 - Gastown CLI (`gt`) - For full town management
@@ -585,31 +458,4 @@ Set-Location C:\Users\Nick Lynch\Desktop\Coding Projects\KimiGasTown
 
 ---
 
-## 📝 Quick Reference Card
-
-```powershell
-# VALIDATE SYSTEM
-.\scripts\ralph\test\ralph-system-test.ps1
-.\scripts\ralph\test\ralph-live-test.ps1
-
-# BASIC OPERATIONS
-.\scripts\ralph\ralph-master.ps1 -Command status
-.\scripts\ralph\ralph-master.ps1 -Command create-bead -Intent "task"
-.\scripts\ralph\ralph-master.ps1 -Command run -Bead <id>
-
-# SETUP NEW PROJECT
-.\scripts\ralph\ralph-setup.ps1 -ProjectName "app" -ProjectType go
-
-# TEST DEMO
-cd examples/ralph-demo
-.\test.ps1
-
-# VALIDATE
-.\scripts\ralph\ralph-validate.ps1 -Detailed
-```
-
----
-
-**Repository:** https://github.com/nicklynch10/gastown-kimi
-
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-03

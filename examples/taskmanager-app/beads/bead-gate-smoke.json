@@ -1,0 +1,43 @@
+{
+  "id": "gt-taskmgr-gate-smoke-001",
+  "title": "[GATE] Smoke Test Gate",
+  "intent": "Ensure all basic functionality works before allowing new features",
+  "dod": {
+    "verifiers": [
+      {
+        "name": "Module imports cleanly",
+        "command": "Import-Module '..\TaskManager.psm1' -Force; exit 0",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "All unit tests pass",
+        "command": "$result = Invoke-Pester -Path '..\tests\TaskManager.Tests.ps1' -PassThru; if ($result.FailedCount -eq 0) { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 60
+      },
+      {
+        "name": "No PSScriptAnalyzer warnings",
+        "command": "$issues = Invoke-ScriptAnalyzer -Path '..\TaskManager.psm1' -Severity Warning; if ($issues.Count -eq 0) { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 30
+      }
+    ],
+    "evidence_required": true
+  },
+  "constraints": {
+    "max_iterations": 1,
+    "time_budget_minutes": 10
+  },
+  "lane": "gate",
+  "priority": 0,
+  "blocking": {
+    "is_gate": true,
+    "gate_type": "smoke"
+  },
+  "ralph_meta": {
+    "attempt_count": 0,
+    "retry_backoff_seconds": 10,
+    "executor_version": "ralph-v1.0"
+  }
+}

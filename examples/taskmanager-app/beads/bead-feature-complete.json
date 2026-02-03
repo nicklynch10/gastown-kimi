@@ -1,0 +1,52 @@
+{
+  "id": "gt-taskmgr-complete-001",
+  "title": "Implement Complete-Task and Remove-Task functionality",
+  "intent": "Create functions to mark tasks as completed and remove tasks from the system",
+  "dod": {
+    "verifiers": [
+      {
+        "name": "Complete-Task marks task as completed",
+        "command": "$t = Add-Task -Title 'Complete me'; $result = Complete-Task -Id $t.id; if ($result.status -eq 'completed') { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "Complete-Task sets completedAt timestamp",
+        "command": "$t = Add-Task -Title 'Complete me'; $result = Complete-Task -Id $t.id; if ($result.completedAt) { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "Remove-Task removes task",
+        "command": "$t = Add-Task -Title 'Remove me'; $before = (Get-Tasks).Count; Remove-Task -Id $t.id -Confirm:$false; $after = (Get-Tasks).Count; if ($after -lt $before) { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "Clear-CompletedTasks clears completed",
+        "command": "Add-Task -Title 'T1'; Add-Task -Title 'T2'; Add-Task -Title 'T3' | Complete-Task | Out-Null; Clear-CompletedTasks -Confirm:$false; if ((Get-Tasks -Status completed).Count -eq 0) { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 15
+      },
+      {
+        "name": "Unit tests pass",
+        "command": "Invoke-Pester -Path '..\tests\TaskManager.Tests.ps1' -TestName '*Complete*','*Remove*','*Clear*' -PassThru | Select-Object -ExpandProperty Result | ForEach-Object { if ($_ -eq 'Passed') { exit 0 } else { exit 1 } }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 30
+      }
+    ],
+    "evidence_required": true
+  },
+  "constraints": {
+    "max_iterations": 5,
+    "time_budget_minutes": 30,
+    "allowed_files": ["TaskManager.psm1", "tests/TaskManager.Tests.ps1"]
+  },
+  "lane": "feature",
+  "priority": 2,
+  "ralph_meta": {
+    "attempt_count": 0,
+    "retry_backoff_seconds": 30,
+    "executor_version": "ralph-v1.0"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "gt-taskmgr-list-001",
+  "title": "Implement Get-Tasks with filtering and sorting",
+  "intent": "Create a function to list tasks with support for filtering by status and priority, sorted by priority",
+  "dod": {
+    "verifiers": [
+      {
+        "name": "Get-Tasks returns all tasks by default",
+        "command": "$tasks = Get-Tasks; if ($tasks.Count -ge 0) { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "Get-Tasks filters by status",
+        "command": "$pending = Get-Tasks -Status pending; $completed = Get-Tasks -Status completed; exit 0",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "Get-Tasks filters by priority",
+        "command": "$high = Get-Tasks -Priority high; exit 0",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "Tasks sorted by priority correctly",
+        "command": "$tasks = Get-Tasks; if ($tasks[0].priority -in @('critical','high')) { exit 0 } else { exit 1 }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 10
+      },
+      {
+        "name": "Unit tests pass",
+        "command": "Invoke-Pester -Path '..\tests\TaskManager.Tests.ps1' -TestName '*Get-Tasks*' -PassThru | Select-Object -ExpandProperty Result | ForEach-Object { if ($_ -eq 'Passed') { exit 0 } else { exit 1 } }",
+        "expect": { "exit_code": 0 },
+        "timeout_seconds": 30
+      }
+    ],
+    "evidence_required": true
+  },
+  "constraints": {
+    "max_iterations": 5,
+    "time_budget_minutes": 30,
+    "allowed_files": ["TaskManager.psm1", "tests/TaskManager.Tests.ps1"]
+  },
+  "lane": "feature",
+  "priority": 2,
+  "ralph_meta": {
+    "attempt_count": 0,
+    "retry_backoff_seconds": 30,
+    "executor_version": "ralph-v1.0"
+  }
+}

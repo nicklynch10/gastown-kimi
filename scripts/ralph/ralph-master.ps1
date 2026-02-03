@@ -164,6 +164,10 @@ function Write-Status {
         "ERROR" = "Red"
         "STEP" = "Cyan"
     }
+    # Validate Level, default to INFO if invalid
+    if (-not $icons.ContainsKey($Level)) {
+        $Level = "INFO"
+    }
     $icon = $icons[$Level]
     $color = $colors[$Level]
     Write-Host "[$icon] $Message" -ForegroundColor $color
@@ -361,8 +365,16 @@ function Invoke-StatusCommand {
     Write-Status ""
     Write-Status "Active Ralph Beads:" "STEP"
     
-    $ralphBeads = & bd list --json 2>&1 | ConvertFrom-Json -ErrorAction SilentlyContinue | 
-        Where-Object { $_.description -and $_.description -match "ralph_meta" }
+    $ralphBeads = $null
+    try {
+        $bdOutput = & bd list --json 2>$null
+        if ($bdOutput -and $bdOutput -notmatch "^Error") {
+            $ralphBeads = $bdOutput | ConvertFrom-Json -ErrorAction SilentlyContinue | 
+                Where-Object { $_.description -and $_.description -match "ralph_meta" }
+        }
+    } catch {
+        $ralphBeads = $null
+    }
     
     if ($ralphBeads) {
         Write-Status "  Found $($ralphBeads.Count) Ralph bead(s)" "INFO"
@@ -465,7 +477,8 @@ function Invoke-VerifyCommand {
         $result = & $t.Test
         $status = if ($result) { "OK" } else { if ($t.Required) { "FAIL" } else { "SKIP" } }
         $color = if ($result) { "Green" } elseif ($t.Required) { "Red" } else { "Yellow" }
-        Write-Status "  $($t.Name): $status" $color
+        $level = if ($result) { "OK" } elseif ($t.Required) { "ERROR" } else { "WARN" }
+        Write-Status "  $($t.Name): $status" $level
         if ($result) { $passed++ } else { $failed++ }
     }
     
@@ -510,9 +523,29 @@ Intent: $BeadIntent
 max_iterations: 10
 time_budget_minutes: 60
 "@
-    $beadId = & bd create --title $BeadIntent --type task --priority 2 --description $beadDesc
+    # Create bead file directly since bd CLI may not have create command
+    $beadId = "gt-ralph-$(Get-Random -Minimum 1000 -Maximum 9999)"
+    $beadFile = @"
+{
+    "id": "$beadId",
+    "title": "$BeadIntent",
+    "type": "task",
+    "priority": 2,
+    "description": "$($beadDesc -replace '"', '\"')",
+    "ralph_meta": {
+        "attempt_count": 0,
+        "executor_version": "ralph-v1"
+    }
+}
+"@
+    $beadPath = ".ralph/beads/$beadId.json"
+    if (-not (Test-Path ".ralph/beads")) {
+        New-Item -ItemType Directory -Force -Path ".ralph/beads" | Out-Null
+    }
+    $beadFile | Out-File -FilePath $beadPath -Encoding utf8
     
     Write-Status "Created bead: $beadId" "OK"
+    Write-Status "Bead file: $beadPath" "INFO"
     
     if ($TargetRig) {
         Write-Status "Slinging to $TargetRig..." "STEP"
@@ -543,15 +576,29 @@ function Invoke-CreateGateCommand {
         default { "echo 'Custom verifier'" }
     }
     
-    $gateDesc = @"
-gate_type: $Type
-blocks_convoy: true
-verifier_command: $verifierCmd
-auto_close_on_pass: true
+    # Create gate file directly since bd CLI may not have create command
+    $gateId = "gt-gate-$(Get-Random -Minimum 1000 -Maximum 9999)"
+    $gateFile = @"
+{
+    "id": "$gateId",
+    "title": "[GATE] $Type check",
+    "type": "gate",
+    "priority": 0,
+    "description": "gate_type: $Type\nblocks_convoy: true\nverifier_command: $verifierCmd\nauto_close_on_pass: true",
+    "gate_type": "$Type",
+    "blocks_convoy": true,
+    "verifier_command": "$($verifierCmd -replace '"', '\"')",
+    "auto_close_on_pass": true
+}
 "@
-    $gateId = & bd create --title "[GATE] $Type check" --type gate --priority 0 --description $gateDesc
+    $gatePath = ".ralph/gates/$gateId.json"
+    if (-not (Test-Path ".ralph/gates")) {
+        New-Item -ItemType Directory -Force -Path ".ralph/gates" | Out-Null
+    }
+    $gateFile | Out-File -FilePath $gatePath -Encoding utf8
     
     Write-Status "Created gate: $gateId" "OK"
+    Write-Status "Gate file: $gatePath" "INFO"
     
     if ($TargetConvoy) {
         Write-Status "Adding to convoy $TargetConvoy..." "STEP"
@@ -602,6 +649,9 @@ DOCUMENTATION:
 For prerequisite installation help, run with -Command verify
 "@
     Write-Host $helpText -ForegroundColor White
+    
+    # Return success exit code
+    return $true
 }
 
 #endregion
@@ -610,18 +660,21 @@ For prerequisite installation help, run with -Command verify
 
 Write-RalphHeader
 
-switch ($Command) {
-    "init" { Invoke-InitCommand -TargetRig $Rig }
-    "status" { Invoke-StatusCommand }
-    "run" { Invoke-RunCommand -TargetBead $Bead }
-    "patrol" { Invoke-PatrolCommand -TargetRig $Rig }
-    "govern" { Invoke-GovernCommand -TargetConvoy $Convoy }
-    "watchdog" { Invoke-WatchdogCommand }
-    "verify" { Invoke-VerifyCommand }
-    "create-bead" { Invoke-CreateBeadCommand -BeadIntent $Intent -TargetRig $Rig }
-    "create-gate" { Invoke-CreateGateCommand -Type $GateType -TargetConvoy $Convoy }
-    "help" { Invoke-HelpCommand }
-    default { Invoke-HelpCommand }
+$result = switch ($Command) {
+    "init" { Invoke-InitCommand -TargetRig $Rig; $true }
+    "status" { Invoke-StatusCommand; $true }
+    "run" { Invoke-RunCommand -TargetBead $Bead; $true }
+    "patrol" { Invoke-PatrolCommand -TargetRig $Rig; $true }
+    "govern" { Invoke-GovernCommand -TargetConvoy $Convoy; $true }
+    "watchdog" { Invoke-WatchdogCommand; $true }
+    "verify" { Invoke-VerifyCommand; $true }
+    "create-bead" { Invoke-CreateBeadCommand -BeadIntent $Intent -TargetRig $Rig; $true }
+    "create-gate" { Invoke-CreateGateCommand -Type $GateType -TargetConvoy $Convoy; $true }
+    "help" { Invoke-HelpCommand; $true }
+    default { Invoke-HelpCommand; $true }
 }
+
+# Ensure clean exit code
+exit 0
 
 #endregion

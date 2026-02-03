@@ -1,8 +1,44 @@
 # Ralph-Gastown Integration
 
-> **Windows-Native AI Agent Orchestration with Correctness-Forcing DoD**
+> **Windows-Native AI Agent Orchestration with Correctness-Forcing Definition of Done**
 
 This project integrates [Ralph](https://github.com/snarktank/ralph)'s retry-semantics with [Gastown](https://github.com/steveyegge/gastown)'s durable work orchestration to create a correctness-forcing AI agent system that runs natively on Windows.
+
+## Quick Start (5 Minutes)
+
+### Prerequisites
+
+- Windows 10/11
+- PowerShell 5.1+
+- Git: `winget install Git.Git`
+- Kimi CLI: `pip install kimi-cli`
+
+### 1. Verify System Health
+
+```powershell
+# Run all validation tests
+.\scripts\ralph\ralph-validate.ps1
+
+# Expected: 56/56 tests pass
+```
+
+### 2. Install 24/7 Watchdog
+
+```powershell
+# Run as Administrator
+.\scripts\ralph\setup-watchdog.ps1
+```
+
+### 3. Your First Ralph Bead
+
+```powershell
+# Create a bead with Definition of Done
+.\scripts\ralph\ralph-master.ps1 -Command create-bead `
+    -Intent "Implement user authentication feature"
+
+# Run Ralph executor
+.\scripts\ralph\ralph-master.ps1 -Command run -Bead gt-abc12
+```
 
 ## What is This?
 
@@ -17,151 +53,113 @@ This project integrates [Ralph](https://github.com/snarktank/ralph)'s retry-sema
 Unlike typical agent loops that stop when "done", Ralph enforces a **Definition of Done (DoD)**. Work is not complete until all verifiers pass. Gates ensure failing tests block new feature work.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  RALPH EXECUTION LOOP                                        │
-├─────────────────────────────────────────────────────────────┤
-│  1. Parse DoD verifiers from bead                           │
-│  2. Run verifiers (TDD - expect failures first)             │
-│  3. Invoke Kimi with intent + constraints + verifiers       │
-│  4. Kimi implements solution                                │
-│  5. Run verifiers again (MUST all pass)                     │
-│  6. ✓ Done  OR  ✗ Retry with failure context               │
-└─────────────────────────────────────────────────────────────┘
++------------------------------------------+
+|  RALPH EXECUTION LOOP                     |
++------------------------------------------+
+|  1. Parse DoD verifiers from bead        |
+|  2. Run verifiers (TDD - expect fails)   |
+|  3. Invoke Kimi with intent + verifiers  |
+|  4. Kimi implements solution             |
+|  5. Run verifiers again (MUST pass)      |
+|  6. Done OR Retry with context           |
++------------------------------------------+
 ```
 
-## Quick Start (5 Minutes)
+## Documentation
 
-### Prerequisites
-
-- Windows 10/11
-- PowerShell 5.1+ (or PowerShell 7)
-- [Gastown CLI](https://github.com/steveyegge/gastown) (`gt`)
-- [Beads CLI](https://github.com/steveyegge/beads) (`bd`)
-- [Kimi Code CLI](https://www.kimi.com/code) (`kimi`)
-
-### Installation
-
-```powershell
-# 1. Clone this repository
-git clone https://github.com/nicklynch10/gastown-kimi.git
-cd gastown-kimi
-
-# 2. Initialize Ralph in your Gastown town
-.\scripts\ralph\ralph-master.ps1 -Command init
-
-# 3. Verify installation
-.\scripts\ralph\ralph-master.ps1 -Command verify
-```
-
-### Your First Ralph Bead
-
-```powershell
-# Create a bead with DoD
-.\scripts\ralph\ralph-master.ps1 -Command create-bead `
-    -Intent "Fix login bug" `
-    -Rig myproject
-
-# The bead is now created with:
-# - Intent: what needs to be done
-# - DoD: verifiers that must pass
-# - Constraints: max iterations, time budget
-
-# Run Ralph executor on the bead
-.\scripts\ralph\ralph-master.ps1 -Command run -Bead gt-abc12
-```
+| Document | Description |
+|----------|-------------|
+| [docs/guides/QUICKSTART.md](docs/guides/QUICKSTART.md) | Quick start guide |
+| [docs/guides/SETUP.md](docs/guides/SETUP.md) | Detailed setup instructions |
+| [docs/reference/RALPH_INTEGRATION.md](docs/reference/RALPH_INTEGRATION.md) | Technical integration guide |
+| [AGENTS.md](AGENTS.md) | Guide for AI agents |
 
 ## Usage Guide
 
-### Creating Ralph Beads
-
-Ralph beads extend standard Gastown beads with structured DoD:
+### Ralph Master Commands
 
 ```powershell
-# Quick create
+# System status
+.\scripts\ralph\ralph-master.ps1 -Command status
+
+# Create work bead
 .\scripts\ralph\ralph-master.ps1 -Command create-bead `
-    -Intent "Implement user authentication" `
-    -Rig myproject
+    -Intent "Fix login bug"
 
-# Or manually with full control
-$beadId = bd create `
-    --title "Implement auth" `
-    --type task `
-    --description @"
-Intent: Implement JWT-based authentication
-
-## Definition of Done
-{
-  "verifiers": [
-    {"name": "Build", "command": "go build ./...", "expect": {"exit_code": 0}},
-    {"name": "Tests", "command": "go test ./auth/...", "expect": {"exit_code": 0}}
-  ]
-}
-
-## Constraints
-max_iterations: 10
-time_budget_minutes: 60
-"@
-```
-
-### Running Ralph Work
-
-```powershell
-# Run executor on a bead
+# Run executor on bead
 .\scripts\ralph\ralph-master.ps1 -Command run -Bead gt-abc12
 
-# Or directly
-.\scripts\ralph\ralph-executor-simple.ps1 -BeadId gt-abc12 -Verbose
-```
-
-### Managing Gates
-
-Gates enforce "no green, no features":
-
-```powershell
-# Create a gate
-.\scripts\ralph\ralph-master.ps1 -Command create-gate `
-    -Type smoke `
-    -Convoy convoy-xyz
-
-# Check gate status
+# Check governance ("no green, no features")
 .\scripts\ralph\ralph-master.ps1 -Command govern
 
-# Gate types: smoke, lint, build, test, security, custom
-```
-
-### Monitoring
-
-```powershell
-# Start watchdog (runs continuously)
+# Start watchdog
 .\scripts\ralph\ralph-master.ps1 -Command watchdog
 
-# Check status
-.\scripts\ralph\ralph-master.ps1 -Command status
+# Verify installation
+.\scripts\ralph\ralph-master.ps1 -Command verify
+```
+
+### Managing the Watchdog
+
+```powershell
+# Check watchdog status
+.\scripts\ralph\manage-watchdog.ps1 -Action status
+
+# Stop watchdog
+.\scripts\ralph\manage-watchdog.ps1 -Action stop
+
+# Restart watchdog
+.\scripts\ralph\manage-watchdog.ps1 -Action restart
 ```
 
 ## Architecture
 
 ### Three-Loop System
 
-| Ralph Loop | Gastown Component | Purpose |
-|------------|------------------|---------|
-| Build Loop | `molecule-ralph-work` | Implement bead with DoD enforcement |
-| Test Loop | `molecule-ralph-patrol` | Continuous testing, emit bug beads |
-| Governor Loop | `ralph-governor.ps1` | "No green, no features" policy |
+| Loop | Component | Purpose |
+|------|-----------|---------|
+| Build | `molecule-ralph-work` | Implement bead with DoD enforcement |
+| Test | `molecule-ralph-patrol` | Continuous testing, emit bug beads |
+| Governor | `ralph-governor.ps1` | "No green, no features" policy |
 
-### Components
+### Key Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| **ralph-master.ps1** | `scripts/ralph/ralph-master.ps1` | Main control interface |
-| **ralph-executor-simple.ps1** | `scripts/ralph/ralph-executor-simple.ps1` | Retry loop executor |
-| **ralph-governor.ps1** | `scripts/ralph/ralph-governor.ps1` | Policy enforcement |
-| **ralph-watchdog.ps1** | `scripts/ralph/ralph-watchdog.ps1` | Always-on monitoring |
-| **molecule-ralph-work** | `.beads/formulas/molecule-ralph-work.formula.toml` | Work molecule |
-| **molecule-ralph-patrol** | `.beads/formulas/molecule-ralph-patrol.formula.toml` | Patrol molecule |
-| **molecule-ralph-gate** | `.beads/formulas/molecule-ralph-gate.formula.toml` | Gate molecule |
+```
+gastown-kimi/
+├── scripts/ralph/
+│   ├── ralph-master.ps1       # Main control interface
+│   ├── ralph-executor.ps1     # Retry loop executor
+│   ├── ralph-governor.ps1     # Policy enforcement
+│   ├── ralph-watchdog.ps1     # Always-on monitoring
+│   ├── ralph-setup.ps1        # One-command setup
+│   ├── ralph-validate.ps1     # E2E validation
+│   ├── ralph-browser.psm1     # Browser testing module
+│   ├── ralph-resilience.psm1  # Error handling module
+│   └── test/
+│       ├── ralph-system-test.ps1
+│       └── ralph-live-test.ps1
+│
+├── .beads/
+│   ├── formulas/
+│   │   ├── molecule-ralph-work.formula.toml
+│   │   ├── molecule-ralph-patrol.formula.toml
+│   │   └── molecule-ralph-gate.formula.toml
+│   └── schemas/
+│       └── ralph-bead.schema.json
+│
+├── examples/
+│   ├── ralph-demo/            # Calculator demo
+│   └── taskmanager-app/       # Full Task Manager app
+│
+└── docs/
+    ├── guides/                # User guides
+    ├── reference/             # Technical reference
+    └── reports/               # Test reports
+```
 
 ## Ralph Bead Contract
+
+Beads define work with a Definition of Done:
 
 ```json
 {
@@ -172,8 +170,7 @@ Gates enforce "no green, no features":
         "name": "Build succeeds",
         "command": "go build ./...",
         "expect": {"exit_code": 0},
-        "timeout_seconds": 60,
-        "on_failure": "stop"
+        "timeout_seconds": 60
       }
     ],
     "evidence_required": true
@@ -187,115 +184,68 @@ Gates enforce "no green, no features":
 }
 ```
 
-## Example: Calculator App
+## Testing
 
-See `examples/ralph-demo/` for a complete working example:
+### System Tests
 
 ```powershell
-# Run the demo application
-cd examples/ralph-demo
-.\ralph-demo.ps1 -Operation add -A 5 -B 3
+# All validation tests (56 tests)
+.\scripts\ralph\ralph-validate.ps1
 
-# Run tests
+# System tests only
+.\scripts\ralph\test\ralph-system-test.ps1 -TestType all
+
+# Live material tests
+.\scripts\ralph\test\ralph-live-test.ps1
+```
+
+### Demo Application
+
+```powershell
+cd examples/ralph-demo
 .\test.ps1
 
-# Check the Ralph bead
-cat bead-gt-demo-calc-001.json
-```
-
-## Command Reference
-
-### ralph-master.ps1
-
-```powershell
-# Commands
-.\scripts\ralph\ralph-master.ps1 -Command init                    # Initialize Ralph
-.\scripts\ralph\ralph-master.ps1 -Command status                  # Show status
-.\scripts\ralph\ralph-master.ps1 -Command verify                  # Verify setup
-.\scripts\ralph\ralph-master.ps1 -Command run -Bead <id>         # Run executor
-.\scripts\ralph\ralph-master.ps1 -Command patrol -Rig <rig>       # Start patrol
-.\scripts\ralph\ralph-master.ps1 -Command govern                  # Check gates
-.\scripts\ralph\ralph-master.ps1 -Command watchdog               # Start watchdog
-.\scripts\ralph\ralph-master.ps1 -Command create-bead            # Create bead
-.\scripts\ralph\ralph-master.ps1 -Command create-gate            # Create gate
-.\scripts\ralph\ralph-master.ps1 -Command help                   # Show help
-```
-
-### ralph-governor.ps1
-
-```powershell
-.\scripts\ralph\ralph-governor.ps1 -Action check                 # Check gates
-.\scripts\ralph\ralph-governor.ps1 -Action status                # Show status
-.\scripts\ralph\ralph-governor.ps1 -Action enforce               # Enforce policy
-.\scripts\ralph\ralph-governor.ps1 -Action sling -Bead <id> -Rig <rig>
-```
-
-### ralph-watchdog.ps1
-
-```powershell
-.\scripts\ralph\ralph-watchdog.ps1                              # Run continuously
-.\scripts\ralph\ralph-watchdog.ps1 -RunOnce                      # Single scan
-.\scripts\ralph\ralph-watchdog.ps1 -WatchInterval 30             # Custom interval
+# Or run the calculator
+.\ralph-demo.ps1 -Operation add -A 5 -B 3
 ```
 
 ## Troubleshooting
 
-### "gt/bd/kimi not found"
+### Common Issues
 
-Install the prerequisites:
+**Scripts won't run:**
 ```powershell
-# Gastown
-go install github.com/steveyegge/gastown/cmd/gt@latest
-
-# Beads
-go install github.com/steveyegge/beads/cmd/bd@latest
-
-# Kimi (see https://www.kimi.com/code)
-```
-
-### "Scripts won't run"
-
-Check PowerShell execution policy:
-```powershell
-Get-ExecutionPolicy
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-### "Verifiers timeout"
+**Missing tools:**
+```powershell
+# Run prerequisite check
+.\scripts\ralph\ralph-prereq-check.ps1
+```
 
-Increase timeout in bead:
-```json
+**Verifiers timeout:**
+```powershell
+# Increase timeout in bead
 {"timeout_seconds": 300}
 ```
 
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| `README.md` | This file - quick start and usage |
-| `RALPH_INTEGRATION.md` | Detailed integration guide |
-| `RALPH_TEST_REPORT.md` | Test results and validation |
-| `AGENTS.md` | For AI agents working on this codebase |
-| `examples/ralph-demo/` | Working example application |
-
 ## Windows Compatibility
 
-✅ **Windows-Native**: All PowerShell scripts run natively on Windows without WSL
-✅ **PowerShell 5.1+**: Compatible with both Windows PowerShell and PowerShell 7
-✅ **No Bash Dependencies**: Pure PowerShell implementation
-✅ **Standard Windows APIs**: Uses Windows process and file APIs
+- **Windows-native PowerShell** - No WSL required
+- **PowerShell 5.1+** - Compatible with Windows PowerShell and PowerShell 7
+- **No Bash Dependencies** - Pure PowerShell implementation
 
 ## Contributing
 
-See `AGENTS.md` for detailed information about the codebase structure and development workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for detailed information.
 
 ## License
 
-MIT License - See LICENSE file
+MIT License - See [LICENSE](LICENSE) file
 
 ## Credits
 
 - [Gastown](https://github.com/steveyegge/gastown) by Steve Yegge
 - [Ralph Pattern](https://github.com/snarktank/ralph) by Geoffrey Huntley
-- [Ralph-Kimi](https://github.com/nicklynch10/ralph-kimi) by Nick Lynch
 - [Kimi Code CLI](https://www.kimi.com/code) by Moonshot AI
