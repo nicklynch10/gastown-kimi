@@ -1,0 +1,42 @@
+﻿{
+    "id":  "gt-live-test-001",
+    "constraints":  {
+                        "time_budget_minutes":  5,
+                        "max_iterations":  3
+                    },
+    "ralph_meta":  {
+                       "executor_version":  "ralph-v1",
+                       "attempt_count":  0
+                   },
+    "intent":  "Verify Ralph system works with real operations",
+    "dod":  {
+                "verifiers":  [
+                                  {
+                                      "timeout_seconds":  10,
+                                      "command":  "Test-Path \u0027.ralph/live-test-20260202-234230\u0027",
+                                      "name":  "Directory exists",
+                                      "expect":  {
+                                                     "exit_code":  0
+                                                 }
+                                  },
+                                  {
+                                      "timeout_seconds":  10,
+                                      "command":  "\u0027test\u0027 | Out-File \u0027.ralph/live-test-20260202-234230/write-test.txt\u0027",
+                                      "name":  "Can write file",
+                                      "expect":  {
+                                                     "exit_code":  0
+                                                 }
+                                  },
+                                  {
+                                      "timeout_seconds":  10,
+                                      "command":  "Get-Content \u0027.ralph/live-test-20260202-234230/write-test.txt\u0027",
+                                      "name":  "Can read file",
+                                      "expect":  {
+                                                     "exit_code":  0,
+                                                     "stdout_contains":  "test"
+                                                 }
+                                  }
+                              ]
+            },
+    "title":  "Live Test Bead"
+}

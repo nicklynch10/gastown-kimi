@@ -1,0 +1,30 @@
+﻿{
+    "id": "gt-gate-tests-001",
+    "title": "[GATE] All Tests Must Pass",
+    "intent": "Gate to ensure all tests pass before features can be deployed",
+    "dod": {
+        "verifiers": [
+            {
+                "name": "Demo app tests pass",
+                "command": "examples/ralph-demo/test.ps1",
+                "expect": {"exit_code": 0},
+                "timeout_seconds": 30
+            }
+        ],
+        "evidence_required": true
+    },
+    "constraints": {
+        "max_iterations": 3
+    },
+    "lane": "gate",
+    "priority": 0,
+    "ralph_meta": {
+        "attempt_count": 0
+    },
+    "blocking": {
+        "is_gate": true,
+        "gate_type": "test",
+        "blocks_convoy": true,
+        "auto_close_on_pass": true
+    }
+}

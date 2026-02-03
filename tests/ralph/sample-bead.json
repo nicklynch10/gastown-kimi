@@ -1,0 +1,39 @@
+﻿{
+    "id": "gt-sample-001",
+    "title": "Sample Ralph Bead",
+    "intent": "Demonstrate Ralph bead contract structure",
+    "dod": {
+        "verifiers": [
+            {
+                "name": "Build check",
+                "command": "go build ./...",
+                "expect": {"exit_code": 0},
+                "timeout_seconds": 60
+            },
+            {
+                "name": "Unit tests",
+                "command": "go test ./internal/...",
+                "expect": {"exit_code": 0},
+                "timeout_seconds": 120
+            }
+        ],
+        "evidence_required": true,
+        "artifact_paths": ["tests/screenshots/*.png", "logs/*.log"]
+    },
+    "constraints": {
+        "max_iterations": 10,
+        "time_budget_minutes": 60,
+        "allowed_dirs": ["internal/", "cmd/", "pkg/"],
+        "forbidden_ops": ["rm -rf /", "drop database"]
+    },
+    "lane": "feature",
+    "priority": 2,
+    "ralph_meta": {
+        "attempt_count": 0,
+        "last_attempt": null,
+        "retry_backoff_seconds": 30
+    },
+    "blocking": {
+        "is_gate": false
+    }
+}

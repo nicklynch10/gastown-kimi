@@ -1,0 +1,21 @@
+﻿{
+    "id": "gt-demo-fail-001",
+    "title": "Demo: Ralph Retry on Failure",
+    "intent": "Demonstrate Ralph retry behavior when verifiers fail",
+    "dod": {
+        "verifiers": [
+            {
+                "name": "This verifier always fails",
+                "command": "exit 1",
+                "expect": {"exit_code": 0},
+                "timeout_seconds": 5
+            }
+        ]
+    },
+    "constraints": {
+        "max_iterations": 3
+    },
+    "ralph_meta": {
+        "attempt_count": 0
+    }
+}

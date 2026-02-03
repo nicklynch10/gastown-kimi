@@ -1,0 +1,56 @@
+﻿{
+    "id": "gt-demo-calc-001",
+    "title": "Implement PowerShell Calculator with Ralph DoD",
+    "intent": "Create a working calculator application with full test coverage that can perform add, subtract, multiply, and divide operations",
+    "dod": {
+        "verifiers": [
+            {
+                "name": "Module loads without errors",
+                "command": "Import-Module examples/ralph-demo/Calculator.psm1 -Force",
+                "expect": {"exit_code": 0},
+                "timeout_seconds": 10
+            },
+            {
+                "name": "All unit tests pass",
+                "command": "examples/ralph-demo/test.ps1",
+                "expect": {"exit_code": 0},
+                "timeout_seconds": 30
+            },
+            {
+                "name": "Addition works correctly",
+                "command": "examples/ralph-demo/ralph-demo.ps1 -Operation add -A 10 -B 5",
+                "expect": {"exit_code": 0, "stdout_contains": "15"},
+                "timeout_seconds": 10
+            },
+            {
+                "name": "Division works correctly",
+                "command": "examples/ralph-demo/ralph-demo.ps1 -Operation divide -A 20 -B 4",
+                "expect": {"exit_code": 0, "stdout_contains": "5"},
+                "timeout_seconds": 10
+            },
+            {
+                "name": "Divide by zero returns error",
+                "command": "examples/ralph-demo/ralph-demo.ps1 -Operation divide -A 10 -B 0",
+                "expect": {"exit_code": 1},
+                "timeout_seconds": 10
+            }
+        ],
+        "evidence_required": true,
+        "artifact_paths": ["examples/ralph-demo/*.ps1", "examples/ralph-demo/*.psm1"]
+    },
+    "constraints": {
+        "max_iterations": 5,
+        "time_budget_minutes": 15,
+        "allowed_dirs": ["examples/ralph-demo/"]
+    },
+    "lane": "feature",
+    "priority": 2,
+    "ralph_meta": {
+        "attempt_count": 0,
+        "retry_backoff_seconds": 30,
+        "executor_version": "ralph-v1"
+    },
+    "blocking": {
+        "is_gate": false
+    }
+}
