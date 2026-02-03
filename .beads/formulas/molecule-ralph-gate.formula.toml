@@ -1,0 +1,119 @@
+description = """
+Ralph gate bead molecule - represents a blocking checkpoint.
+
+Gate beads enforce "test failures stop progress":
+- Convoys cannot proceed while any gate is red
+- Feature beads are not slung while gates are open
+- Gates auto-close when their verifiers pass
+- Gates auto-open when their verifiers fail
+
+## Gate Types
+
+| Type | Verifier | Description |
+|------|----------|-------------|
+| smoke | smoke tests | Quick health check |
+| lint | linter | Code style compliance |
+| build | build command | Compiles successfully |
+| test | test suite | All tests pass |
+| security | security scan | No vulnerabilities |
+| custom | user-defined | Any verifier |
+
+## Gate Lifecycle
+
+```
+Open ──→ Verifier Passes ──→ Closed (green)
+  ↑                            │
+  └─── Verifier Fails ─────────┘
+```
+
+## Variables
+
+| Variable | Description |
+|----------|-------------|
+| gate_type | Type of gate (smoke, lint, build, test, security, custom) |
+| verifier_command | Command to run for verification |
+| auto_close | Whether to auto-close when verifier passes (default: true) |
+"""
+formula = "molecule-ralph-gate"
+version = 1
+type = "workflow"
+
+[[steps]]
+id = "run-gate-verifier"
+title = "Run gate verifier"
+description = """
+Run the gate's verification command.
+
+**Execute verifier:**
+```powershell
+$gateType = "{{gate_type}}"
+$command = "{{verifier_command}}"
+
+Write-Host "Running $gateType gate verifier..."
+$output = & $command 2>&1
+$exitCode = $LASTEXITCODE
+```
+
+**Store result:**
+```powershell
+$result = @{
+    timestamp = (Get-Date -Format "o")
+    gate_type = $gateType
+    passed = ($exitCode -eq 0)
+    output = $output -join "`n"
+}
+```
+"""
+
+[[steps]]
+id = "update-gate-status"
+title = "Update gate bead status"
+needs = ["run-gate-verifier"]
+description = """
+Update the gate bead based on verifier result.
+
+**If verifier passed:**
+```powershell
+if ($result.passed) {
+    bd update {{bead_id}} --status=closed
+    bd update {{bead_id}} --notes "gate_status: green"
+    Write-Host "✓ Gate is GREEN" -ForegroundColor Green
+}
+```
+
+**If verifier failed:**
+```powershell
+else {
+    bd update {{bead_id}} --status=open
+    bd update {{bead_id}} --notes "gate_status: red"
+    Write-Host "✗ Gate is RED" -ForegroundColor Red
+}
+```
+
+**Notify convoy:**
+```powershell
+gt mail send {{convoy_id}}/mayor -s "Gate Update: $gateType" `
+    -m "Gate {{bead_id}} is now $(if ($result.passed) { 'GREEN' } else { 'RED' })"
+```
+"""
+
+[vars]
+[vars.gate_type]
+description = "Type of gate"
+required = true
+
+[vars.verifier_command]
+description = "Command to run for verification"
+required = true
+
+[vars.auto_close]
+description = "Auto-close when verifier passes"
+default = "true"
+
+[vars.convoy_id]
+description = "Convoy this gate belongs to"
+required = true
+
+[vars.bead_id]
+description = "The gate bead ID"
+required = true

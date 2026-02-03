@@ -1,0 +1,223 @@
+description = """
+Ralph-style work molecule with correctness-forcing DoD enforcement.
+
+This molecule implements a bead using Ralph retry semantics:
+- Run verifiers FIRST (TDD style) - they should fail
+- Implement the solution
+- Run verifiers again - they MUST pass
+- If verifiers fail, retry with failure summary as context
+- Only complete when DoD is fully satisfied
+
+## Ralph Loop
+
+```
+┌─────────────┐    ┌──────────────┐    ┌─────────────┐
+│ Run Verifiers│───→│ Implement   │───→│ Run Verifiers│
+│ (should fail)│    │ with context │    │ (must pass)  │
+└─────────────┘    └──────────────┘    └──────┬──────┘
+       ↑───────────────────────────────────────┘
+       (if fail, retry with failure summary)
+```
+
+## Windows-Native Execution
+
+All commands are PowerShell-compatible for native Windows execution.
+No WSL required.
+
+## Variables
+
+| Variable | Description |
+|----------|-------------|
+| bead_id  | The bead ID to implement |
+| ralph_script | Path to ralph-executor.ps1 (auto-detected if not set) |
+"""
+formula = "molecule-ralph-work"
+version = 1
+type = "workflow"
+
+[[steps]]
+id = "load-ralph-context"
+title = "Load Ralph context and verify bead contract"
+description = """
+Initialize the Ralph execution environment and validate the bead contract.
+
+**1. Prime Gastown environment:**
+```powershell
+gt prime
+bd prime
+```
+
+**2. Load the bead:**
+```powershell
+$bead = bd show {{bead_id}} --json | ConvertFrom-Json
+```
+
+**3. Validate Ralph contract:**
+- Check bead has `intent` field
+- Check bead has `dod.verifiers` array
+- Verify verifiers are PowerShell-compatible
+
+**4. Detect Ralph executor:**
+```powershell
+$ralphScript = "{{ralph_script}}"
+if (-not $ralphScript -or -not (Test-Path $ralphScript)) {
+    # Search in common locations
+    $candidates = @(
+        "$PSScriptRoot/../scripts/ralph/ralph-executor.ps1",
+        "$env:GASTOWN_ROOT/scripts/ralph/ralph-executor.ps1",
+        ".gastown/scripts/ralph/ralph-executor.ps1"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) {
+            $ralphScript = $c
+            break
+        }
+    }
+}
+if (-not $ralphScript) {
+    throw "ralph-executor.ps1 not found. Set ralph_script variable."
+}
+```
+
+**5. Record start in bead metadata:**
+```powershell
+$meta = @{
+    attempt_count = 0
+    last_attempt = (Get-Date -Format "o")
+    executor_version = "ralph-v1"
+}
+bd update {{bead_id}} --notes "ralph_meta: $(ConvertTo-Json $meta -Compress)"
+```
+
+**Exit criteria:** Bead contract validated, executor located, metadata initialized.
+"""
+
+[[steps]]
+id = "branch-setup"
+title = "Set up working branch"
+needs = ["load-ralph-context"]
+description = """
+Create a clean feature branch for this work.
+
+**1. Check current state:**
+```powershell
+git status
+git branch --show-current
+```
+
+**2. Create feature branch:**
+```powershell
+$branch = "ralph/{{bead_id}}"
+git checkout -b $branch
+```
+
+**3. Sync with main:**
+```powershell
+git fetch origin
+git rebase origin/main
+```
+
+**Exit criteria:** On clean feature branch, rebased on latest main.
+"""
+
+[[steps]]
+id = "ralph-iteration"
+title = "Ralph iteration: implement with DoD enforcement"
+needs = ["branch-setup"]
+description = """
+Run the Ralph retry loop until DoD is satisfied.
+
+**Execute Ralph executor:**
+```powershell
+& $ralphScript -BeadId "{{bead_id}}" -MaxIterations 10
+```
+
+The executor will:
+1. Parse the bead's DoD verifiers
+2. Run verifiers (expecting failures on first run - TDD)
+3. Launch Kimi with bead context + verifier requirements
+4. Kimi implements the solution
+5. Run verifiers again
+6. If all pass: complete
+7. If any fail: retry with failure summary as context
+8. Repeat until max iterations or success
+
+**Windows-native execution:**
+- Uses PowerShell for all shell operations
+- Kimi Code CLI invoked with `--yolo` for autonomous operation
+- All verifier commands executed in PowerShell
+- Screenshots and logs captured to .ralph/evidence/
+
+**Exit criteria:** All DoD verifiers pass OR max iterations reached.
+"""
+
+[[steps]]
+id = "attach-evidence"
+title = "Attach evidence to bead"
+needs = ["ralph-iteration"]
+description = """
+Attach all generated evidence to the bead.
+
+**1. Collect evidence:**
+```powershell
+$evidenceDir = ".ralph/evidence/{{bead_id}}"
+$screenshots = Get-ChildItem "$evidenceDir/screenshots" -Filter "*.png" -ErrorAction SilentlyContinue
+$logs = Get-ChildItem "$evidenceDir/logs" -Filter "*.log" -ErrorAction SilentlyContinue
+$traces = Get-ChildItem "$evidenceDir/traces" -Filter "*.json" -ErrorAction SilentlyContinue
+```
+
+**2. Attach to bead:**
+```powershell
+$artifacts = @{
+    screenshots = @($screenshots | ForEach-Object { $_.FullName })
+    logs = @($logs | ForEach-Object { $_.FullName })
+    traces = @($traces | ForEach-Object { $_.FullName })
+}
+bd update {{bead_id}} --notes "artifacts: $(ConvertTo-Json $artifacts -Compress)"
+```
+
+**Exit criteria:** Evidence attached to bead.
+"""
+
+[[steps]]
+id = "cleanup-and-submit"
+title = "Clean up and submit"
+needs = ["attach-evidence"]
+description = """
+Final cleanup and work submission.
+
+**1. Verify all changes committed:**
+```powershell
+git status
+```
+
+**2. Commit any remaining changes:**
+```powershell
+if (git status --porcelain) {
+    git add -A
+    git commit -m "ralph: {{bead_id}} - implementation complete"
+}
+```
+
+**3. Push branch:**
+```powershell
+git push -u origin (git branch --show-current)
+```
+
+**4. Update bead status:**
+```powershell
+bd update {{bead_id}} --status=completed
+gt done
+```
+
+**Exit criteria:** Work submitted, bead marked complete.
+"""
+
+[vars]
+[vars.bead_id]
+description = "The bead ID to implement using Ralph semantics"
+required = true
+
+[vars.ralph_script]
+description = "Path to ralph-executor.ps1 (auto-detected if not set)"
+required = false

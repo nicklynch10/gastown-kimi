@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ralph Bead Contract",
+  "description": "Schema for beads using Ralph-style retry semantics with DoD enforcement",
+  "type": "object",
+  "required": ["intent", "dod"],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "description": "Behavior-level change description (what needs to happen)"
+    },
+    "dod": {
+      "type": "object",
+      "description": "Definition of Done - explicit checks that must pass",
+      "required": ["verifiers"],
+      "properties": {
+        "verifiers": {
+          "type": "array",
+          "description": "List of verification commands with expected outcomes",
+          "items": {
+            "type": "object",
+            "required": ["command", "expect"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Human-readable name for this verification"
+              },
+              "command": {
+                "type": "string",
+                "description": "Command to run (PowerShell-compatible for Windows)"
+              },
+              "expect": {
+                "type": "object",
+                "description": "Expected outcome",
+                "properties": {
+                  "exit_code": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "stdout_contains": {
+                    "type": "string"
+                  },
+                  "stderr_contains": {
+                    "type": "string"
+                  }
+                }
+              },
+              "timeout_seconds": {
+                "type": "integer",
+                "default": 300,
+                "description": "Maximum time allowed for this verification"
+              },
+              "on_failure": {
+                "type": "string",
+                "enum": ["stop", "continue", "retry"],
+                "default": "stop",
+                "description": "Action when this verifier fails"
+              }
+            }
+          }
+        },
+        "evidence_required": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether evidence must be attached before marking done"
+        },
+        "artifact_paths": {
+          "type": "array",
+          "description": "Paths to expected artifacts (screenshots, logs, etc.)",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Constraints on implementation",
+      "properties": {
+        "allowed_dirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Directories the agent may modify"
+        },
+        "forbidden_ops": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Operations that are not allowed"
+        },
+        "migration_rules": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Database migration requirements"
+        },
+        "max_iterations": {
+          "type": "integer",
+          "default": 10,
+          "description": "Maximum Ralph retry iterations"
+        },
+        "time_budget_minutes": {
+          "type": "integer",
+          "default": 60,
+          "description": "Total time budget for this bead"
+        }
+      }
+    },
+    "lane": {
+      "type": "string",
+      "enum": ["feature", "bug", "hardening", "deps", "gate", "patrol"],
+      "description": "Type of work"
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4,
+      "description": "Priority level (0=P0 critical, 4=low)"
+    },
+    "ralph_meta": {
+      "type": "object",
+      "description": "Ralph execution metadata",
+      "properties": {
+        "attempt_count": {
+          "type": "integer",
+          "default": 0
+        },
+        "last_attempt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_failure_summary": {
+          "type": "string"
+        },
+        "verifier_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string" },
+              "verifier": { "type": "string" },
+              "passed": { "type": "boolean" },
+              "output": { "type": "string" }
+            }
+          }
+        },
+        "retry_backoff_seconds": {
+          "type": "integer",
+          "default": 30
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Attached artifacts",
+      "properties": {
+        "screenshots": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "logs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "traces": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "diff_url": {
+          "type": "string"
+        }
+      }
+    },
+    "blocking": {
+      "type": "object",
+      "description": "Gate bead configuration",
+      "properties": {
+        "is_gate": {
+          "type": "boolean",
+          "default": false
+        },
+        "gate_type": {
+          "type": "string",
+          "enum": ["smoke", "lint", "build", "test", "security", "custom"]
+        },
+        "blocks_convoy": {
+          "type": "boolean",
+          "default": false
+        },
+        "auto_close_on_pass": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

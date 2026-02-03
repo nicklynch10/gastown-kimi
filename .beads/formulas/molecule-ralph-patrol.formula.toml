@@ -1,0 +1,233 @@
+description = """
+Ralph patrol molecule - automated testing that emits failure packets as beads.
+
+This molecule runs continuously (as a wisp) to:
+1. Execute test suite (unit, integration, e2e)
+2. Run Playwright browser tests
+3. On failure: create P0 bug beads with artifact pointers
+4. Sling failure beads to appropriate workers
+
+## Patrol Cycle
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ Run Tests   │───→│ All Pass?   │───→│ Next Cycle  │
+└─────────────┘    └──────┬──────┘    └─────────────┘
+                          │ No
+                          ▼
+                   ┌─────────────┐
+                   │ Create Bug  │
+                   │ Bead (P0)   │
+                   └──────┬──────┘
+                          ▼
+                   ┌─────────────┐
+                   │ Attach Art  │
+                   │ (trace/img) │
+                   └──────┬──────┘
+                          ▼
+                   ┌─────────────┐
+                   │ Sling to    │
+                   │ Worker      │
+                   └─────────────┘
+```
+
+## Windows-Native Testing
+
+All test commands are PowerShell-compatible:
+- `go test ./...` for Go projects
+- `npm test` for Node projects
+- `playwright test` for browser tests
+
+## Variables
+
+| Variable | Description |
+|----------|-------------|
+| test_pattern | Test pattern to run (default: ./...) |
+| e2e_enabled | Whether to run E2E tests (default: true) |
+| patrol_interval | Seconds between patrol cycles (default: 300) |
+"""
+formula = "molecule-ralph-patrol"
+version = 1
+type = "workflow"
+
+[[steps]]
+id = "detect-project"
+title = "Detect project type and test configuration"
+description = """
+Detect the project type to determine test commands.
+
+**1. Check for go.mod:**
+```powershell
+if (Test-Path "go.mod") {
+    $projectType = "go"
+    $testCommand = "go test ./..."
+    $buildCommand = "go build ./..."
+}
+```
+
+**2. Check for package.json:**
+```powershell
+elseif (Test-Path "package.json") {
+    $projectType = "node"
+    $testCommand = "npm test"
+    $buildCommand = "npm run build"
+}
+```
+
+**3. Check for playwright.config:**
+```powershell
+$playwrightConfig = Get-ChildItem "playwright.config.*" -ErrorAction SilentlyContinue
+$e2eAvailable = $playwrightConfig -ne $null
+```
+
+**4. Store in molecule context:**
+These values are used by subsequent steps.
+"""
+
+[[steps]]
+id = "run-unit-tests"
+title = "Run unit tests"
+needs = ["detect-project"]
+description = """
+Run the project's unit test suite.
+
+**Execute tests:**
+```powershell
+$testOutput = & $testCommand 2>&1
+$testExitCode = $LASTEXITCODE
+```
+
+**Capture output:**
+```powershell
+$logFile = ".ralph/patrol/$(Get-Date -Format 'yyyyMMdd-HHmmss')-unit.log"
+$testOutput | Out-File -FilePath $logFile
+```
+
+**On failure, create bug bead:**
+```powershell
+if ($testExitCode -ne 0) {
+    $beadId = bd create `
+        --title "[PATROL] Unit tests failing" `
+        --type bug `
+        --priority 0 `
+        --description @"
+Patrol detected failing unit tests.
+
+Test output: $logFile
+Exit code: $testExitCode
+
+## Verifier
+```powershell
+$testCommand
+```
+
+## Auto-Close
+This bead will auto-close when tests pass again.
+"@
+}
+```
+"""
+
+[[steps]]
+id = "run-build-check"
+title = "Run build verification"
+needs = ["run-unit-tests"]
+description = """
+Verify the project builds successfully.
+
+**Execute build:**
+```powershell
+$buildOutput = & $buildCommand 2>&1
+$buildExitCode = $LASTEXITCODE
+```
+
+**On failure, create bug bead:**
+```powershell
+if ($buildExitCode -ne 0) {
+    bd create `
+        --title "[PATROL] Build failure" `
+        --type bug `
+        --priority 0 `
+        --description "Build is broken. Exit code: $buildExitCode"
+}
+```
+"""
+
+[[steps]]
+id = "run-e2e-tests"
+title = "Run E2E/Playwright tests"
+needs = ["run-build-check"]
+description = """
+Run browser/E2E tests if available.
+
+**Check if E2E enabled:**
+Skip if {{e2e_enabled}} is false.
+
+**Run Playwright:**
+```powershell
+$e2eOutput = npx playwright test 2>&1
+$e2eExitCode = $LASTEXITCODE
+```
+
+**Capture artifacts on failure:**
+```powershell
+if ($e2eExitCode -ne 0) {
+    # Copy test results
+    $resultsDir = ".ralph/patrol/$(Get-Date -Format 'yyyyMMdd-HHmmss')-e2e"
+    Copy-Item "test-results" $resultsDir -Recurse -ErrorAction SilentlyContinue
+    Copy-Item "playwright-report" "$resultsDir-report" -Recurse -ErrorAction SilentlyContinue
+    
+    # Create bug bead with artifact pointers
+    bd create `
+        --title "[PATROL] E2E tests failing" `
+        --type bug `
+        --priority 0 `
+        --description @"
+Patrol detected failing E2E tests.
+
+Results: $resultsDir
+Exit code: $e2eExitCode
+
+## Artifacts
+- Screenshots: $resultsDir/*.png
+- Traces: $resultsDir/*/trace.zip
+- Report: $resultsDir-report
+
+## Verifier
+```powershell
+npx playwright test
+```
+"@
+}
+```
+"""
+
+[[steps]]
+id = "patrol-wait"
+title = "Wait for next patrol cycle"
+needs = ["run-e2e-tests"]
+description = """
+Wait before next patrol cycle.
+
+```powershell
+$interval = {{patrol_interval}} ?? 300
+Start-Sleep -Seconds $interval
+```
+
+This step uses Type: wait with backoff for wisps.
+"""
+type = "wait"
+backoff = "base=30s, multiplier=2, max=5m"
+
+[vars]
+[vars.test_pattern]
+description = "Test pattern to run (default: ./...)"
+default = "./..."
+
+[vars.e2e_enabled]
+description = "Whether to run E2E tests"
+default = "true"
+
+[vars.patrol_interval]
+description = "Seconds between patrol cycles"
+default = "300"
