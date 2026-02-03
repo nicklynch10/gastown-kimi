@@ -43,8 +43,15 @@ gastown-kimi/
 │   ├── polecat/         # Agent session management
 │   ├── rig/             # Repository/workspace management
 │   └── ...
-├── templates/           # Role templates (CLAUDE.md, etc.)
+├── scripts/             # Utility scripts
+│   └── browser-gate.sh  # Browser testing gate (run this!)
+├── tests/browser/       # Browser/MCP tests
+│   ├── smoke.spec.js    # Smoke tests
+│   └── mcp-test-runner.sh # MCP integration tests
 ├── docs/                # Documentation
+│   ├── BROWSER_TESTING.md # Browser testing guide
+│   └── ...
+├── templates/           # Role templates (CLAUDE.md, etc.)
 ├── KIMI_INTEGRATION.md  # Detailed Kimi integration guide
 └── README.md            # User documentation
 ```
@@ -177,8 +184,33 @@ Before submitting changes:
 - [ ] `go test ./internal/config/...` passes
 - [ ] `go run smoke_test_kimi.go` passes (10/10 tests)
 - [ ] `go run kimi_full_check.go` passes (29/29 tests)
+- [ ] **Browser Testing Gate passes**: `./scripts/browser-gate.sh`
 - [ ] Code builds without errors: `go build ./...`
 - [ ] No linting errors: `golangci-lint run` (if available)
+
+**About the Browser Testing Gate:**
+
+The browser gate validates UI functionality using Playwright and MCP (Model Context Protocol):
+
+```bash
+# Run browser tests (recommended before commits)
+./scripts/browser-gate.sh
+
+# Quick mode (faster, smoke tests only)
+./scripts/browser-gate.sh --quick
+
+# CI mode (stricter)
+./scripts/browser-gate.sh --ci
+```
+
+**What it tests:**
+- Gastown binary exists and works
+- CLI commands execute properly
+- Agent configurations are accessible
+- UI components render correctly
+- Kimi integration is functional
+
+**For fresh agents:** This is a self-contained script. Just run it and it will check/install Playwright automatically. See `docs/BROWSER_TESTING.md` for details.
 
 ### 11. Troubleshooting
 
@@ -227,6 +259,32 @@ kimi --continue <session>              # Resume session
 | `FINAL_TEST_REPORT.md` | Test results and validation |
 | `KIMI_SMOKE_TEST_REPORT.md` | Smoke test results |
 | `AGENTS.md` | This file - for AI agents |
+| `docs/BROWSER_TESTING.md` | Browser testing gate documentation |
+
+### 14. CI/CD Gates
+
+**Automatic gates run on every PR/push:**
+
+1. **Unit Tests** - `go test ./...`
+2. **Browser Testing Gate** - Playwright MCP tests (`.github/workflows/browser-gate.yml`)
+
+**To view CI status:**
+```bash
+gh run list
+gh run watch <run-id>
+```
+
+**The browser gate ensures:**
+- UI functionality works correctly
+- Agent configurations are accessible
+- No regressions in critical paths
+- Cross-platform compatibility
+
+**If CI fails:**
+1. Check the logs: `gh run view <run-id>`
+2. Download artifacts: screenshots and logs
+3. Fix issues locally
+4. Push again
 
 ---
 

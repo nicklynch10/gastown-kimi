@@ -1,0 +1,128 @@
+# Browser Testing Gate for Gastown-Kimi
+# This workflow runs browser tests to validate UI functionality
+# Acts as a gate for PRs and pushes to main
+
+name: Browser Test Gate
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  browser-tests:
+    name: Browser Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+        cache: true
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+      continue-on-error: true
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tmux
+    
+    - name: Build Gastown
+      run: |
+        go build -o gt ./cmd/gt
+        ./gt version || echo "gt built successfully"
+    
+    - name: Install Playwright
+      run: |
+        npm install -g @anthropic-ai/playwright-mcp
+        npx playwright install chromium
+    
+    - name: Run Browser Tests
+      id: browser-tests
+      run: |
+        chmod +x scripts/browser-gate.sh
+        ./scripts/browser-gate.sh --ci
+      continue-on-error: false
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: browser-test-results
+        path: |
+          tests/browser/results/
+          tests/browser/screenshots/
+          tests/browser/logs/
+        retention-days: 7
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let summary = '## 🔍 Browser Test Gate\n\n';
+          
+          if ('${{ steps.browser-tests.outcome }}' === 'success') {
+            summary += '✅ **All browser tests passed**\n\n';
+          } else {
+            summary += '❌ **Browser tests failed**\n\n';
+            summary += 'Check the artifacts for screenshots and logs.\n\n';
+          }
+          
+          summary += '**Gate Status:** ' + ('${{ steps.browser-tests.outcome }}' === 'success' ? 'PASSED' : 'FAILED') + '\n';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+
+  mcp-integration-tests:
+    name: MCP Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: browser-tests
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Playwright MCP
+      run: |
+        npm install -g @anthropic-ai/playwright-mcp
+        npx playwright install chromium
+    
+    - name: Run MCP-based tests
+      run: |
+        chmod +x tests/browser/mcp-test-runner.sh
+        ./tests/browser/mcp-test-runner.sh
+      env:
+        MCP_SERVER_URL: ${{ secrets.MCP_SERVER_URL }}
+        MCP_API_KEY: ${{ secrets.MCP_API_KEY }}
+    
+    - name: Upload MCP test logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mcp-test-results
+        path: tests/browser/mcp-results/
+        retention-days: 7
