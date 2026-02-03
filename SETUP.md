@@ -378,4 +378,23 @@ After setup:
 
 ---
 
+## Ralph-Gastown Integration Setup
+
+For Ralph-specific setup instructions, see:
+- **QUICKSTART.md** - Quick start guide for Ralph-Gastown
+- **README.md** - Main documentation
+- **QUICK_REFERENCE.md** - One-page command reference
+
+### Quick Ralph Setup
+
+```powershell
+# After Gastown is set up, initialize Ralph:
+.\scripts\ralph\ralph-master.ps1 -Command init
+
+# Verify installation:
+.\scripts\ralph\ralph-master.ps1 -Command verify
+
+# See QUICKSTART.md for full instructions
+```
+
 **Repository:** https://github.com/nicklynch10/gastown-kimi
