@@ -82,22 +82,37 @@ go version
 
 ---
 
-### 4. Install Gastown CLI (gt)
+### 4. Build Gastown CLI (gt)
 
-The Gastown CLI provides work orchestration capabilities.
+The Gastown CLI provides work orchestration capabilities. Since this is a development setup, build from source:
 
+**Option A: Using the Windows build script (recommended)**
 ```powershell
-# Install using go install
-go install github.com/nicklynch10/gastown-cli/cmd/gt@latest
+# From the project root
+.\scripts\build-gt-windows.ps1
+
+# Or specify custom output path
+.\scripts\build-gt-windows.ps1 -OutputPath C:\Tools\gt.exe
+```
+
+**Option B: Manual build**
+```powershell
+# Build with version info
+$VERSION = git describe --tags --always --dirty
+$COMMIT = git rev-parse --short HEAD
+$BUILD_TIME = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+$LDFLAGS = "-X github.com/steveyegge/gastown/internal/cmd.Version=$VERSION -X github.com/steveyegge/gastown/internal/cmd.Commit=$COMMIT -X github.com/steveyegge/gastown/internal/cmd.BuildTime=$BUILD_TIME -X github.com/steveyegge/gastown/internal/cmd.BuiltProperly=1"
+go build -ldflags "$LDFLAGS" -o gt.exe ./cmd/gt
 ```
 
 **Verify installation:**
 ```powershell
-gt version
-# Should show version information
+.\gt.exe version
+# Should show: gt version vX.X.X (dev: main@XXXXXXX)
+# NOT: "ERROR: This binary was built with 'go build' directly"
 ```
 
-**Note:** The `gt` binary will be installed to `%USERPROFILE%\go\bin\gt.exe`. Make sure this directory is in your PATH, or move the binary to a directory that is.
+**Note:** If the version shows an error, the binary was built without proper version flags. Use the build script above.
 
 ---
 

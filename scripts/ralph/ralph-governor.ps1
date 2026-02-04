@@ -59,34 +59,40 @@ param(
 function Test-Prerequisites {
     $missing = @()
     
-    if (-not (Get-Command gt -ErrorAction SilentlyContinue)) {
-        $missing += "gt (Gastown CLI)"
-    }
-    if (-not (Get-Command bd -ErrorAction SilentlyContinue)) {
-        $missing += "bd (Beads CLI)"
+    # gt is recommended but not strictly required for standalone mode
+    $gt = Get-Command gt -ErrorAction SilentlyContinue
+    if (-not $gt) {
+        Write-GovLog "Gastown CLI (gt) not found - some features may be limited" "WARN"
     }
     
-    if ($missing.Count -gt 0) {
-        Write-Host "========================================" -ForegroundColor Red
-        Write-Host "  MISSING PREREQUISITES                " -ForegroundColor Red
-        Write-Host "========================================" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "The following required tools are missing:" -ForegroundColor Yellow
-        foreach ($tool in $missing) {
-            Write-Host "  - $tool" -ForegroundColor Red
-        }
-        Write-Host ""
-        Write-Host "Installation:" -ForegroundColor Cyan
-        Write-Host "  1. Gastown CLI (gt):" -ForegroundColor White
-        Write-Host "     go install github.com/nicklynch10/gastown-cli/cmd/gt@latest" -ForegroundColor Gray
-        Write-Host ""
-        Write-Host "  2. Beads CLI (bd):" -ForegroundColor White
-        Write-Host "     Ralph works without bd using standalone JSON file mode" -ForegroundColor Gray
-        Write-Host ""
-        return $false
+    # bd is optional - Ralph works in standalone mode
+    $bd = Get-Command bd -ErrorAction SilentlyContinue
+    if (-not $bd) {
+        Write-GovLog "Beads CLI (bd) not found - using standalone mode" "INFO"
     }
     
     return $true
+}
+
+function Get-StandaloneGates {
+    # Load gates from .ralph/gates/ directory
+    $gates = @()
+    $gatesDir = ".ralph/gates"
+    
+    if (Test-Path $gatesDir) {
+        $files = Get-ChildItem -Path $gatesDir -Filter "*.json" -ErrorAction SilentlyContinue
+        foreach ($file in $files) {
+            try {
+                $content = Get-Content $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+                $gates += $content
+            }
+            catch {
+                Write-GovLog "Failed to parse gate file $($file.Name): $_" "WARN"
+            }
+        }
+    }
+    
+    return $gates
 }
 
 #endregion
@@ -138,16 +144,24 @@ function Get-GatesInConvoy {
 function Get-AllGatesStatus {
     $allGates = @()
     
-    # Get all open gate beads across all rigs
-    try {
-        $gates = & bd list --status open --json 2>&1 | ConvertFrom-Json -ErrorAction SilentlyContinue
-        $allGates = $gates | Where-Object { 
-            $_.type -eq "gate" -or 
-            ($_.description -and $_.description -like "*gate_type*")
+    # First try standalone mode
+    $standaloneGates = Get-StandaloneGates
+    $allGates += $standaloneGates
+    
+    # Then try bd CLI if available
+    $bd = Get-Command bd -ErrorAction SilentlyContinue
+    if ($bd) {
+        try {
+            $gates = & bd list --status open --json 2>&1 | ConvertFrom-Json -ErrorAction SilentlyContinue
+            $bdGates = $gates | Where-Object { 
+                $_.type -eq "gate" -or 
+                ($_.description -and $_.description -like "*gate_type*")
+            }
+            $allGates += $bdGates
         }
-    }
-    catch {
-        # No gates found or bd error
+        catch {
+            # No gates found or bd error
+        }
     }
     
     return $allGates

@@ -162,8 +162,8 @@ function Test-Functional {
     
     # Test prerequisite checker
     Invoke-Test -Name "Prerequisite checker runs" -Test {
-        $output = & "scripts\ralph\ralph-prereq-check.ps1" -Quiet 2>&1
-        # Should complete without error
+        $output = & "scripts\ralph\ralph-prereq-check.ps1" 2>&1
+        # Should complete without error (output goes to console via Write-Host)
     }
     
     # Test help commands - verify script runs without error (uses Write-Host so output not capturable)

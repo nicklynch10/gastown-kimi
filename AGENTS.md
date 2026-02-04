@@ -10,7 +10,18 @@
 
 ## Quick Setup (5 Minutes)
 
-### 1. Validate System Works
+### 1. Build Gastown CLI
+
+```powershell
+# Build gt.exe with proper version info (Windows)
+.\scripts\build-gt-windows.ps1
+
+# Verify the build
+.\gt.exe version
+# Should show: gt version vX.X.X (dev: main@XXXXXXX)
+```
+
+### 2. Validate System Works
 
 ```powershell
 # Run comprehensive test suite
@@ -19,16 +30,16 @@
 # Expected: 60+ tests pass, 0 fail
 ```
 
-### 2. Run Live Tests
+### 3. Run Live Tests
 
 ```powershell
 # Tests actual operations (creates files, runs commands)
 .\scripts\ralph\test\ralph-live-test.ps1
 
-# Expected: 16+ tests pass
+# Expected: 26+ tests pass
 ```
 
-### 3. You're Ready!
+### 4. You're Ready!
 
 If all tests pass, the system is operational.
 

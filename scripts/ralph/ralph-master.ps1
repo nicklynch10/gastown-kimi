@@ -70,14 +70,19 @@ $SCRIPTS_DIR = $PSScriptRoot
 $TOWN_ROOT = $null
 
 function Get-TownRoot {
-    if (Get-Command gt -ErrorAction SilentlyContinue) {
-        try {
-            return & gt root 2>$null
-        } catch {
-            return $null
+    # Try to find project root by looking for .git directory
+    $current = Get-Location
+    while ($current) {
+        if (Test-Path (Join-Path $current ".git")) {
+            return $current
         }
+        $parent = Split-Path $current -Parent
+        if ($parent -eq $current) { break }
+        $current = $parent
     }
-    return $null
+    
+    # Fall back to current directory
+    return Get-Location
 }
 
 $TOWN_ROOT = Get-TownRoot
@@ -367,15 +372,20 @@ function Invoke-StatusCommand {
     
     # Check Gastown status
     Write-Status "Gastown Status:" "STEP"
-    $gtVersion = & gt version 2>&1
-    Write-Status "  Version: $gtVersion" "INFO"
+    $gtPath = Get-Command gt -ErrorAction SilentlyContinue
+    if ($gtPath) {
+        $gtVersion = & gt version 2>&1
+        Write-Status "  Version: $gtVersion" "INFO"
+    } else {
+        Write-Status "  Gastown CLI (gt): Not found" "WARN"
+    }
     
-    $townRoot = & gt root 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Status "  Town Root: $townRoot" "INFO"
+    $townRoot = Get-TownRoot
+    if ($townRoot) {
+        Write-Status "  Project Root: $townRoot" "INFO"
     }
     else {
-        Write-Status "  Town Root: Not in a town" "WARN"
+        Write-Status "  Project Root: Could not determine" "WARN"
     }
     
     # Check Ralph formulas

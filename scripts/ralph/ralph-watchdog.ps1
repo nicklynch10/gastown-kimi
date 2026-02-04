@@ -77,33 +77,16 @@ $MetricsFile = Join-Path $MetricsDir "watchdog-metrics.json"
 #region Prerequisites Check
 
 function Test-Prerequisites {
-    $missing = @()
-    
-    if (-not (Get-Command gt -ErrorAction SilentlyContinue)) {
-        $missing += "gt (Gastown CLI)"
-    }
-    if (-not (Get-Command bd -ErrorAction SilentlyContinue)) {
-        $missing += "bd (Beads CLI)"
+    # gt is recommended but not strictly required
+    $gt = Get-Command gt -ErrorAction SilentlyContinue
+    if (-not $gt) {
+        Write-WatchLog "Gastown CLI (gt) not found - some features may be limited" "WARN"
     }
     
-    if ($missing.Count -gt 0) {
-        Write-Host "========================================" -ForegroundColor Red
-        Write-Host "  MISSING PREREQUISITES                " -ForegroundColor Red
-        Write-Host "========================================" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "The following required tools are missing:" -ForegroundColor Yellow
-        foreach ($tool in $missing) {
-            Write-Host "  - $tool" -ForegroundColor Red
-        }
-        Write-Host ""
-        Write-Host "Installation:" -ForegroundColor Cyan
-        Write-Host "  1. Gastown CLI (gt):" -ForegroundColor White
-        Write-Host "     go install github.com/nicklynch10/gastown-cli/cmd/gt@latest" -ForegroundColor Gray
-        Write-Host ""
-        Write-Host "  2. Beads CLI (bd):" -ForegroundColor White
-        Write-Host "     Ralph works without bd using standalone JSON file mode" -ForegroundColor Gray
-        Write-Host ""
-        return $false
+    # bd is optional - Ralph works in standalone mode
+    $bd = Get-Command bd -ErrorAction SilentlyContinue
+    if (-not $bd) {
+        Write-WatchLog "Beads CLI (bd) not found - using standalone mode" "INFO"
     }
     
     return $true

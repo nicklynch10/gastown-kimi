@@ -21,8 +21,12 @@ Quick install:
 # Install Git and Go
 winget install Git.Git GoLang.Go
 
-# Install Gastown CLI
-go install github.com/nicklynch10/gastown-cli/cmd/gt@latest
+# Clone this repository
+git clone <repository-url>
+cd gastown-kimi
+
+# Build Gastown CLI (Windows)
+.\scripts\build-gt-windows.ps1
 
 # Allow PowerShell scripts
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -31,8 +35,8 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 ### 2. Clone and Test
 
 ```powershell
-git clone https://github.com/nicklynch10/gastown-kimi.git
-cd gastown-kimi
+git clone https://github.com/steveyegge/gastown.git
+cd gastown
 
 # Run system tests
 .\scripts\ralph\test\ralph-system-test.ps1 -TestType all
