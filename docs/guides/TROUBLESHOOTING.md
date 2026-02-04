@@ -12,6 +12,49 @@ Run the diagnostic script first:
 
 ---
 
+## Kimi CLI Configuration Issues
+
+### TOML Model Names with Dots
+
+**Error Message:**
+```
+ValidationError: 3 validation errors for Config
+models.kimi-k2.provider Field required
+models.kimi-k2.model Field required
+models.kimi-k2.max_context_size Field required
+```
+
+**Root Cause:** The TOML parser interprets `kimi-k2.5` as a nested table structure `kimi-k2` with key `5`.
+
+**Fix:** Quote model names containing dots in your Kimi CLI config:
+
+```toml
+# WRONG:
+[models.kimi-k2.5]
+provider = "moonshot"
+model = "kimi-k2.5"
+
+# CORRECT:
+[models."kimi-k2.5"]
+provider = "moonshot"
+model = "kimi-k2.5"
+max_context_size = 32768
+```
+
+**Location:** `~/.kimi/config.toml` or `%USERPROFILE%\.kimi\config.toml`
+
+---
+
+## PowerShell Issues
+
+Run the diagnostic script first:
+
+```powershell
+.\scripts\ralph\ralph-prereq-check.ps1 -Verbose
+```
+
+---
+
 ## PowerShell Issues
 
 ### Special Character Parsing Errors
@@ -124,6 +167,32 @@ Set-Content "script.ps1" $content -NoNewline
 git config core.autocrlf true
 git rm -rf --cached .
 git reset --hard HEAD
+```
+
+---
+
+## GT CLI Build Issues
+
+### "BuiltProperly" Check Failure
+
+**Error Message:**
+```
+ERROR: This binary was built with 'go build' directly
+```
+
+**Root Cause:** The gt binary requires specific ldflags to set version info at build time.
+
+**Fix:** Use the provided build script or specify ldflags:
+
+```powershell
+# Option 1: Use the build script
+.\scripts\build-gt.ps1
+
+# Option 2: Build manually with ldflags
+$env:VERSION="dev"
+$env:COMMIT=$(git rev-parse --short HEAD)
+$env:BUILD_TIME=$(Get-Date -Format "o")
+go build -ldflags "-X github.com/steveyegge/gastown/internal/cmd.Version=$env:VERSION -X github.com/steveyegge/gastown/internal/cmd.Commit=$env:COMMIT -X github.com/steveyegge/gastown/internal/cmd.BuildTime=$env:BUILD_TIME -X github.com/steveyegge/gastown/internal/cmd.BuiltProperly=1" -o gt.exe ./cmd/gt
 ```
 
 ---

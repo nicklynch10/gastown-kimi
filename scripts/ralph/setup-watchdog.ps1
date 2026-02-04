@@ -46,7 +46,11 @@ $Cyan = "Cyan"
 
 # Get the watchdog script path
 $ScriptPath = $MyInvocation.MyCommand.Path
-$WatchdogScript = Join-Path (Split-Path $ScriptPath -Parent) "ralph-watchdog.ps1"
+$ScriptDir = Split-Path $ScriptPath -Parent
+$WatchdogScript = Join-Path $ScriptDir "ralph-watchdog.ps1"
+
+# Determine project root (parent of scripts/ralph/)
+$ProjectRoot = Split-Path (Split-Path $ScriptDir -Parent) -Parent
 
 function Write-Status {
     param([string]$Message, [string]$Color = "White")
@@ -102,7 +106,8 @@ function Install-Watchdog {
     # Create the scheduled task
     try {
         $Action = New-ScheduledTaskAction -Execute "powershell.exe" `
-            -Argument "-ExecutionPolicy Bypass -File `"$WatchdogScript`" -RunOnce"
+            -Argument "-ExecutionPolicy Bypass -File `"$WatchdogScript`" -RunOnce" `
+            -WorkingDirectory $ProjectRoot
         
         # Trigger: Run every 5 minutes indefinitely
         $Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
@@ -121,13 +126,13 @@ function Install-Watchdog {
             -UserId $env:USERNAME `
             -RunLevel Highest
         
-        # Register the task
+        # Register the task (PowerShell 5.1 compatible -Force:$true syntax)
         Register-ScheduledTask -TaskName $TaskName `
             -Action $Action `
             -Trigger $Trigger `
             -Settings $Settings `
             -Principal $Principal `
-            -Force | Out-Null
+            -Force:$true | Out-Null
         
         Write-Status "Task registered successfully" $Green
         

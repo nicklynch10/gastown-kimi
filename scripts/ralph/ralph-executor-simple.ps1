@@ -5,10 +5,17 @@
 
 .DESCRIPTION
     A simplified implementation of the Ralph executor that focuses on
-core functionality with cleaner PowerShell syntax.
+    core functionality with cleaner PowerShell syntax.
+    
+    Can operate in two modes:
+    1. Database mode (-BeadId): Uses bd CLI to load beads from database
+    2. Standalone mode (-BeadFile): Loads beads from JSON files directly
 
 .PARAMETER BeadId
-    The bead ID to implement.
+    The bead ID to implement (requires bd CLI).
+
+.PARAMETER BeadFile
+    Path to a bead JSON file (standalone mode, no bd CLI required).
 
 .PARAMETER MaxIterations
     Maximum number of retry iterations.
@@ -19,8 +26,11 @@ core functionality with cleaner PowerShell syntax.
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, ParameterSetName = "Database")]
     [string]$BeadId,
+
+    [Parameter(Mandatory = $true, ParameterSetName = "Standalone")]
+    [string]$BeadFile,
 
     [Parameter()]
     [int]$MaxIterations = 10,
@@ -53,7 +63,13 @@ function Show-PrereqError {
 }
 
 Write-Log "Ralph Executor Simple v$RALPH_VERSION"
-Write-Log "Bead: $BeadId"
+if ($BeadFile) {
+    Write-Log "Mode: Standalone (BeadFile)"
+    Write-Log "Bead File: $BeadFile"
+} else {
+    Write-Log "Mode: Database (BeadId)"
+    Write-Log "Bead: $BeadId"
+}
 Write-Log "Max Iterations: $MaxIterations"
 
 # Check prerequisites
@@ -64,24 +80,40 @@ if (-not $kimi) {
     exit 1
 }
 
-$bd = Get-Command bd -ErrorAction SilentlyContinue
-if (-not $bd) {
-    Write-Log "Beads CLI not found" "ERROR"
-    Show-PrereqError
-    exit 1
-}
-
-Write-Log "Prerequisites check passed" "SUCCESS"
-
-# Load bead
-Write-Log "Loading bead $BeadId..."
-try {
-    $beadJson = & bd show $BeadId --json 2>&1
-    $bead = $beadJson | ConvertFrom-Json
-    Write-Log "Bead loaded: $($bead.title)"
-} catch {
-    Write-Log "Failed to load bead: $_" "ERROR"
-    exit 1
+# Load bead (supports both database and standalone modes)
+if ($BeadFile) {
+    # Standalone mode - load from JSON file
+    Write-Log "Loading bead from file..."
+    if (-not (Test-Path $BeadFile)) {
+        Write-Log "Bead file not found: $BeadFile" "ERROR"
+        exit 1
+    }
+    try {
+        $beadJson = Get-Content $BeadFile -Raw -Encoding UTF8
+        $bead = $beadJson | ConvertFrom-Json
+        Write-Log "Bead loaded: $($bead.title)"
+    } catch {
+        Write-Log "Failed to parse bead file: $_" "ERROR"
+        exit 1
+    }
+} else {
+    # Database mode - requires bd CLI
+    $bd = Get-Command bd -ErrorAction SilentlyContinue
+    if (-not $bd) {
+        Write-Log "Beads CLI not found. Use -BeadFile for standalone mode." "ERROR"
+        Show-PrereqError
+        exit 1
+    }
+    
+    Write-Log "Loading bead from database..."
+    try {
+        $beadJson = & bd show $BeadId --json 2>&1
+        $bead = $beadJson | ConvertFrom-Json
+        Write-Log "Bead loaded: $($bead.title)"
+    } catch {
+        Write-Log "Failed to load bead: $_" "ERROR"
+        exit 1
+    }
 }
 
 # Validate bead

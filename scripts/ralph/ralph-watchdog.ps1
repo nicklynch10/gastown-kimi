@@ -56,8 +56,19 @@ param(
 #region Constants
 
 $WATCHDOG_VERSION = "1.1.0"
-$LogDir = Join-Path (Join-Path "." ".ralph") "logs"
-$MetricsDir = Join-Path (Join-Path "." ".ralph") "metrics"
+
+# Determine project root - use environment variable, PSScriptRoot, or current directory
+$ProjectRoot = if ($env:RALPH_PROJECT_ROOT) { 
+    $env:RALPH_PROJECT_ROOT 
+} elseif ($PSScriptRoot) {
+    # Scripts are in scripts/ralph/, so go up two levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    Get-Location
+}
+
+$LogDir = Join-Path $ProjectRoot ".ralph\logs"
+$MetricsDir = Join-Path $ProjectRoot ".ralph\metrics"
 $LogFile = Join-Path $LogDir "watchdog.log"
 $MetricsFile = Join-Path $MetricsDir "watchdog-metrics.json"
 
@@ -222,7 +233,7 @@ function Update-Metrics {
 #region Bead Operations
 
 function Get-LocalBeads {
-    $beadsDir = Join-Path (Join-Path "." ".ralph") "beads"
+    $beadsDir = Join-Path $ProjectRoot ".ralph\beads"
     if (-not (Test-Path $beadsDir)) {
         return @()
     }
@@ -277,7 +288,7 @@ function Get-BeadActivity {
     
     try {
         # Try local file first
-        $localBeadPath = Join-Path (Join-Path (Join-Path "." ".ralph") "beads") "$BeadId.json"
+        $localBeadPath = Join-Path $ProjectRoot ".ralph\beads\$BeadId.json"
         if (Test-Path $localBeadPath) {
             $bead = Get-Content $localBeadPath -Raw -Encoding UTF8 | ConvertFrom-Json
         }
@@ -495,7 +506,7 @@ function Invoke-ExecutorOnBead {
     }
     
     try {
-        $executorPath = Join-Path (Join-Path (Join-Path "." "scripts") "ralph") "ralph-executor.ps1"
+        $executorPath = Join-Path $ProjectRoot "scripts\ralph\ralph-executor.ps1"
         if (-not (Test-Path $executorPath)) {
             Write-WatchLog "  Executor not found at $executorPath" "ERROR"
             return @{ Success = $false; Output = "Executor not found" }

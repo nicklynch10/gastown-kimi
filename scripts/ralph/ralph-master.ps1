@@ -225,6 +225,12 @@ function Invoke-InitCommand {
     # 2. Install formulas
     Write-Status "Installing Ralph formulas..." "STEP"
     
+    # Create .beads/formulas directory if it doesn't exist
+    $formulasDir = ".beads/formulas"
+    if (-not (Test-Path $formulasDir)) {
+        New-Item -ItemType Directory -Force -Path $formulasDir | Out-Null
+    }
+    
     $formulas = @(
         "molecule-ralph-work",
         "molecule-ralph-patrol",
@@ -232,13 +238,35 @@ function Invoke-InitCommand {
     )
     
     foreach ($formula in $formulas) {
-        $formulaPath = "$SCRIPTS_DIR/../../.beads/formulas/$formula.formula.toml"
-        if (Test-Path $formulaPath) {
-            # Copy to town formulas if not exists
-            Write-Status "  Formula: $formula" "OK"
+        $sourcePath = "$SCRIPTS_DIR/../../.beads/formulas/$formula.formula.toml"
+        $destPath = "$formulasDir/$formula.formula.toml"
+        
+        if (Test-Path $sourcePath) {
+            if (-not (Test-Path $destPath)) {
+                Copy-Item $sourcePath $destPath -Force
+                Write-Status "  Formula: $formula (installed)" "OK"
+            } else {
+                Write-Status "  Formula: $formula (already exists)" "OK"
+            }
         }
         else {
-            Write-Status "  Formula: $formula (not found at $formulaPath)" "WARN"
+            Write-Status "  Formula: $formula (not found at $sourcePath)" "WARN"
+        }
+    }
+    
+    # 2b. Initialize bd CLI if available
+    $bd = Get-Command bd -ErrorAction SilentlyContinue
+    if ($bd) {
+        Write-Status "Initializing Beads CLI..." "STEP"
+        try {
+            $bdInit = & bd init 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Status "  Beads CLI initialized" "OK"
+            } else {
+                Write-Status "  Beads CLI init output: $bdInit" "INFO"
+            }
+        } catch {
+            Write-Status "  Beads CLI init (may already be initialized)" "INFO"
         }
     }
     
@@ -488,7 +516,9 @@ function Invoke-VerifyCommand {
         @{
             Name = "Ralph Formulas"
             Test = { 
-                Test-Path ".beads/formulas/molecule-ralph-work.formula.toml"
+                # Check both possible locations
+                (Test-Path ".beads/formulas/molecule-ralph-work.formula.toml") -or 
+                (Test-Path ".beads/molecule-ralph-work.formula.toml")
             }
             Required = $true
         }
