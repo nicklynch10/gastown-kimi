@@ -603,7 +603,7 @@ function Start-RalphLoop {
 function Show-PrereqError {
     Write-RalphLog "Missing required tools. Please install:" "ERROR"
     Write-RalphLog "  - Kimi CLI: pip install kimi-cli" "WARN"
-    Write-RalphLog "  - Beads CLI: go install github.com/nicklynch10/beads-cli/cmd/bd@latest" "WARN"
+    Write-RalphLog "  - Beads CLI: OPTIONAL - Ralph works in standalone mode without it" "WARN"
     Write-RalphLog "See RALPH_INTEGRATION.md for details" "WARN"
 }
 

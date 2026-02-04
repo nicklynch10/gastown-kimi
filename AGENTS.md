@@ -443,7 +443,7 @@ Get-Content .\ralph\logs\watchdog.log -Tail 20
 - Kimi Code CLI (`kimi`): `pip install kimi-cli`
 - Go 1.21+: `winget install GoLang.Go` (for building gt/bd CLIs)
 - Gastown CLI (`gt`): `go install github.com/nicklynch10/gastown-cli/cmd/gt@latest`
-- Beads CLI (`bd`): `go install github.com/nicklynch10/beads-cli/cmd/bd@latest`
+- Beads CLI (`bd`): Not available - use standalone mode (JSON files)
 
 **Stand-alone Mode:**
 The `ralph-executor-standalone.ps1` can operate without gt/bd using local JSON files.

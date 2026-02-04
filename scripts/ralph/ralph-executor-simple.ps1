@@ -58,7 +58,7 @@ function Write-Log {
 function Show-PrereqError {
     Write-Log "Missing required tools. Please install:" "ERROR"
     Write-Log "  - Kimi CLI: pip install kimi-cli" "INFO"
-    Write-Log "  - Beads CLI: go install github.com/nicklynch10/beads-cli/cmd/bd@latest" "INFO"
+    Write-Log "  - Beads CLI: OPTIONAL - Ralph works in standalone mode" "INFO"
     Write-Log "See RALPH_INTEGRATION.md for details" "INFO"
 }
 

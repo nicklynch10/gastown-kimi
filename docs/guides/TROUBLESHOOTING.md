@@ -502,4 +502,4 @@ If issues persist:
 
 4. **Check GitHub Issues:**
    - Gastown CLI: https://github.com/nicklynch10/gastown-cli
-   - Beads CLI: https://github.com/nicklynch10/beads-cli
+   - Beads CLI: Not available - Ralph works in standalone mode without it

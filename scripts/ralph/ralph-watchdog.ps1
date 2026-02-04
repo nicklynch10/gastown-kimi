@@ -14,7 +14,7 @@
 
     PREREQUISITES:
     - Gastown CLI (gt): https://github.com/nicklynch10/gastown-cli
-    - Beads CLI (bd): https://github.com/nicklynch10/beads-cli
+    - Beads CLI (bd): OPTIONAL - Ralph works in standalone mode
 
 .PARAMETER WatchInterval
     Seconds between watchdog scans (default: 60)
@@ -101,7 +101,7 @@ function Test-Prerequisites {
         Write-Host "     go install github.com/nicklynch10/gastown-cli/cmd/gt@latest" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  2. Beads CLI (bd):" -ForegroundColor White
-        Write-Host "     go install github.com/nicklynch10/beads-cli/cmd/bd@latest" -ForegroundColor Gray
+        Write-Host "     Ralph works without bd using standalone JSON file mode" -ForegroundColor Gray
         Write-Host ""
         return $false
     }

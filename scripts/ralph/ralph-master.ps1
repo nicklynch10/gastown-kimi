@@ -16,7 +16,7 @@
     PREREQUISITES:
     - PowerShell 5.1 or higher
     - Gastown CLI (gt): https://github.com/nicklynch10/gastown-cli
-    - Beads CLI (bd): https://github.com/nicklynch10/beads-cli
+    - Beads CLI (bd): OPTIONAL - Ralph works in standalone mode
     - Kimi Code CLI: pip install kimi-cli
 
 .PARAMETER Command
@@ -125,9 +125,9 @@ function Show-PrereqHelp {
     Write-Host "   go install github.com/nicklynch10/gastown-cli/cmd/gt@latest" -ForegroundColor Gray
     Write-Host "   OR download from: https://github.com/nicklynch10/gastown-cli/releases" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "4. Beads CLI (bd):" -ForegroundColor White
-    Write-Host "   go install github.com/nicklynch10/beads-cli/cmd/bd@latest" -ForegroundColor Gray
-    Write-Host "   OR download from: https://github.com/nicklynch10/beads-cli/releases" -ForegroundColor Gray
+    Write-Host "4. Beads CLI (bd): OPTIONAL" -ForegroundColor White
+    Write-Host "   Ralph works without bd using standalone JSON file mode" -ForegroundColor Gray
+    Write-Host "   The gt bead subcommand provides limited bead read/show functionality" -ForegroundColor Gray
     Write-Host ""
     Write-Host "5. Kimi Code CLI:" -ForegroundColor White
     Write-Host "   pip install kimi-cli" -ForegroundColor Gray

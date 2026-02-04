@@ -89,6 +89,9 @@ $TestDir = ".ralph/live-test-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 New-Item -ItemType Directory -Force -Path $TestDir | Out-Null
 Write-Host "Test artifacts in: $TestDir" -ForegroundColor $Gray
 
+# Calculate project root (3 levels up from test script location) for use in tests
+$ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "../../..") | Select-Object -ExpandProperty Path
+
 Write-TestHeader "LIVE MATERIAL TEST - Ralph-Gastown System"
 Write-Host "Start: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor $Gray
 Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor $Gray
@@ -180,8 +183,8 @@ Run-Test "Create test bead JSON file" {
 }
 
 Run-Test "Validate bead schema" {
-    $schemaPath = ".beads/schemas/ralph-bead.schema.json"
-    if (-not (Test-Path $schemaPath)) { throw "Schema file not found" }
+    $schemaPath = Join-Path $ProjectRoot ".beads/schemas/ralph-bead.schema.json"
+    if (-not (Test-Path $schemaPath)) { throw "Schema file not found at: $schemaPath" }
     
     $schema = Get-Content $schemaPath -Raw | ConvertFrom-Json
     if (-not $schema.required -contains "intent") { throw "Schema missing 'intent' requirement" }
@@ -473,10 +476,13 @@ else {
 #=============================================================================
 Write-TestHeader "TEST 8: Formula Files"
 
+# Calculate project root (3 levels up from test script location)
+$ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "../../..") | Select-Object -ExpandProperty Path
+
 $formulas = @(
-    @{ Name = "molecule-ralph-work"; File = ".beads/formulas/molecule-ralph-work.formula.toml" }
-    @{ Name = "molecule-ralph-patrol"; File = ".beads/formulas/molecule-ralph-patrol.formula.toml" }
-    @{ Name = "molecule-ralph-gate"; File = ".beads/formulas/molecule-ralph-gate.formula.toml" }
+    @{ Name = "molecule-ralph-work"; File = (Join-Path $ProjectRoot ".beads/formulas/molecule-ralph-work.formula.toml") }
+    @{ Name = "molecule-ralph-patrol"; File = (Join-Path $ProjectRoot ".beads/formulas/molecule-ralph-patrol.formula.toml") }
+    @{ Name = "molecule-ralph-gate"; File = (Join-Path $ProjectRoot ".beads/formulas/molecule-ralph-gate.formula.toml") }
 )
 
 foreach ($formula in $formulas) {

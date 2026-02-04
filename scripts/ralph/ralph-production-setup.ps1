@@ -118,23 +118,13 @@ function Install-GastownCLI {
             Write-SetupLog -Message "gt already installed" -Level "SUCCESS"
         }
         
-        # Install bd (Beads CLI)
-        if (-not (Get-Command bd -ErrorAction SilentlyContinue) -or $Force) {
-            Write-SetupLog -Message "Installing bd (Beads CLI)..."
-            go install github.com/nicklynch10/beads-cli/cmd/bd@latest
-            
-            if ($LASTEXITCODE -ne 0) {
-                Write-SetupLog -Message "Failed to install bd" -Level "ERROR"
-                return $false
-            }
-        } else {
-            Write-SetupLog -Message "bd already installed" -Level "SUCCESS"
-        }
+        # Note: bd (Beads CLI) is not available as a separate tool
+        # Ralph works in standalone mode using JSON files
+        Write-SetupLog -Message "Note: bd CLI not available - Ralph uses standalone mode" -Level "INFO"
         
         # Verify
         $gtVersion = & gt version 2>$null
-        $bdVersion = & bd version 2>$null
-        Write-SetupLog -Message "Gastown CLI installed: gt=$gtVersion, bd=$bdVersion" -Level "SUCCESS"
+        Write-SetupLog -Message "Gastown CLI installed: gt=$gtVersion" -Level "SUCCESS"
         
         return $true
     } catch {

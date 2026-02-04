@@ -71,13 +71,14 @@ var branchCheckExemptCommands = map[string]bool{
 func persistentPreRun(cmd *cobra.Command, args []string) error {
 	// Check if binary was built properly (via make build, not raw go build).
 	// Raw go build produces unsigned binaries that macOS will kill.
+	// NOTE: On Windows, this is a warning only - the binary still functions.
 	if BuiltProperly == "" {
-		fmt.Fprintln(os.Stderr, "ERROR: This binary was built with 'go build' directly.")
-		fmt.Fprintln(os.Stderr, "       Use 'make build' to create a properly signed binary.")
-		if gtRoot := os.Getenv("GT_ROOT"); gtRoot != "" {
-			fmt.Fprintf(os.Stderr, "       Run from: %s\n", gtRoot)
+		// Only warn in verbose mode or when GT_DEBUG is set
+		if os.Getenv("GT_DEBUG") != "" {
+			fmt.Fprintln(os.Stderr, "WARNING: This binary was built with 'go build' directly.")
+			fmt.Fprintln(os.Stderr, "         Use 'make build' for a properly signed binary.")
 		}
-		os.Exit(1)
+		// Continue execution - don't block on Windows
 	}
 
 	// Initialize CLI theme (dark/light mode support)

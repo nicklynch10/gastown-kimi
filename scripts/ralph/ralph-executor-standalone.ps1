@@ -12,7 +12,7 @@
     - PowerShell 5.1+ (Windows built-in)
     - Git for Windows
     - Gastown CLI (gt): go install github.com/nicklynch10/gastown-cli/cmd/gt@latest
-    - Beads CLI (bd): go install github.com/nicklynch10/beads-cli/cmd/bd@latest
+    - Beads CLI (bd): OPTIONAL - Standalone mode works with JSON files
     - Kimi Code CLI: pip install kimi-cli
 
 .PARAMETER BeadId

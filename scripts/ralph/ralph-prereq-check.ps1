@@ -11,7 +11,7 @@
     1. PowerShell 5.1+ (included with Windows 10/11)
     2. Git for Windows
     3. Gastown CLI (gt) - https://github.com/nicklynch10/gastown-cli
-    4. Beads CLI (bd) - https://github.com/nicklynch10/beads-cli (OPTIONAL - Ralph works without it)
+    4. Beads CLI (bd) - OPTIONAL (Ralph works in standalone mode without it)
     5. Kimi Code CLI - pip install kimi-cli
 
 .PARAMETER Install
@@ -110,8 +110,8 @@ function Write-InstallHelp {
     Write-Host ""
     
     Write-Host "5. Beads CLI (bd) - OPTIONAL" -ForegroundColor Yellow
-    Write-Host "   Install: go install github.com/nicklynch10/beads-cli/cmd/bd@latest" -ForegroundColor Gray
-    Write-Host "   Note: Ralph works without bd using standalone mode" -ForegroundColor Gray
+    Write-Host "   Note: Ralph works without bd using standalone JSON file mode" -ForegroundColor Gray
+    Write-Host "   The gt bead subcommand provides limited bead functionality" -ForegroundColor Gray
     Write-Host ""
     
     Write-Host "6. Kimi Code CLI" -ForegroundColor Yellow

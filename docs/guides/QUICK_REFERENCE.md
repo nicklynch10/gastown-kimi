@@ -7,7 +7,7 @@ One-page reference for common tasks.
 ```powershell
 # Install prerequisites
 go install github.com/nicklynch10/gastown-cli/cmd/gt@latest
-go install github.com/nicklynch10/beads-cli/cmd/bd@latest
+# Beads CLI (bd) is OPTIONAL - Ralph works without it
 
 # Install Kimi from https://www.kimi.com/code
 
@@ -84,7 +84,7 @@ cd gastown-kimi
 | Problem | Solution |
 |---------|----------|
 | "gt not found" | `go install github.com/nicklynch10/gastown-cli/cmd/gt@latest` |
-| "bd not found" | `go install github.com/nicklynch10/beads-cli/cmd/bd@latest` |
+| "bd not found" | OPTIONAL - Ralph works in standalone mode without bd |
 | "cannot run scripts" | `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` |
 | "kimi not found" | Install from https://www.kimi.com/code |
 

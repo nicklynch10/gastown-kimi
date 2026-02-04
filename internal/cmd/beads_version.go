@@ -94,16 +94,39 @@ func getBeadsVersion() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Check if bd is available in PATH
+	bdPath, lookErr := exec.LookPath("bd")
+	if lookErr != nil {
+		// bd CLI is not installed - this is OK, Gas Town can work without it
+		// Return a placeholder version to skip the version check
+		return MinBeadsVersion, nil
+	}
+
+	// Check if bd is a wrapper script (e.g., bd.ps1 that forwards to gt bead)
+	// by checking if the file is a PowerShell script or if it's the same as gt
+	if strings.HasSuffix(strings.ToLower(bdPath), ".ps1") {
+		// bd.ps1 wrapper detected - this forwards to gt bead which doesn't have version
+		// Return placeholder version since this is the gt bead subcommand
+		return MinBeadsVersion, nil
+	}
+
 	// Use --no-daemon to avoid contention when multiple agents start simultaneously.
 	// Version check doesn't need database access, so direct mode is faster and more reliable.
-	cmd := exec.CommandContext(ctx, "bd", "version", "--no-daemon")
+	cmd := exec.CommandContext(ctx, bdPath, "version", "--no-daemon")
 	output, err := cmd.Output()
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			return "", fmt.Errorf("bd version check timed out")
 		}
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			return "", fmt.Errorf("bd version failed: %s", string(exitErr.Stderr))
+			stderr := string(exitErr.Stderr)
+			// Check if the error is due to unknown flag or command
+			// This happens when bd is actually a wrapper to gt bead
+			if strings.Contains(stderr, "unknown flag") || strings.Contains(stderr, "unknown command") {
+				// bd is a wrapper - skip version check
+				return MinBeadsVersion, nil
+			}
+			return "", fmt.Errorf("bd version failed: %s", stderr)
 		}
 		return "", fmt.Errorf("failed to run bd: %w (is beads installed?)", err)
 	}
@@ -112,7 +135,8 @@ func getBeadsVersion() (string, error) {
 	// or "bd version 0.44.0"
 	matches := beadsVersionRe.FindStringSubmatch(string(output))
 	if len(matches) < 2 {
-		return "", fmt.Errorf("could not parse beads version from: %s", strings.TrimSpace(string(output)))
+		// Could not parse version - bd might be a wrapper
+		return MinBeadsVersion, nil
 	}
 
 	return matches[1], nil
