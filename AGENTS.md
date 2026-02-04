@@ -2,6 +2,12 @@
 
 > **For AI Agents:** This file contains setup and development information for working with this codebase.
 
+## First Time Setup
+
+**New to this project?** Start here:
+1. **[SETUP.md](docs/guides/SETUP.md)** - Install prerequisites (Git, Go, etc.)
+2. **[QUICKSTART.md](docs/guides/QUICKSTART.md)** - Get running in 5 minutes
+
 ## Quick Setup (5 Minutes)
 
 ### 1. Validate System Works
@@ -459,4 +465,4 @@ The `ralph-executor-standalone.ps1` can operate without gt/bd using local JSON f
 
 ---
 
-**Last Updated:** 2026-02-03
+**Last Updated:** 2026-02-04
