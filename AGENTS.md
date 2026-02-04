@@ -41,6 +41,63 @@ This is **Gastown** with full **Ralph-Gastown integration** - a Windows-native A
 
 ---
 
+## PowerShell 5.1 Compatibility
+
+**CRITICAL:** All scripts must be compatible with PowerShell 5.1 (Windows built-in).
+
+### Common Issues and Fixes
+
+#### 1. Join-Path Multiple Arguments
+
+PowerShell 5.1 does NOT support multiple arguments to Join-Path:
+
+```powershell
+# WRONG (PowerShell 7+ only):
+Join-Path $root "subdir" "file.txt"
+
+# CORRECT (PowerShell 5.1):
+Join-Path (Join-Path $root "subdir") "file.txt"
+```
+
+#### 2. Split-Path -LeafBase
+
+PowerShell 5.1 does NOT have `-LeafBase`:
+
+```powershell
+# WRONG:
+Split-Path $path -LeafBase
+
+# CORRECT:
+[System.IO.Path]::GetFileNameWithoutExtension($path)
+```
+
+#### 3. && Command Chaining
+
+PowerShell 5.1 does NOT support `&&`:
+
+```powershell
+# WRONG:
+cd test-app && python -c "..."
+
+# CORRECT:
+Set-Location test-app; python -c "..."
+```
+
+#### 4. Kimi CLI Invocation
+
+Kimi CLI requires `--print` with piped stdin:
+
+```powershell
+# WRONG:
+kimi --yolo -p $promptContent
+
+# CORRECT:
+$promptContent | Out-File $tempFile -Encoding utf8
+Start-Process -FilePath "kimi" -ArgumentList @("--yolo", "--print") -RedirectStandardInput $tempFile -Wait -PassThru -NoNewWindow
+```
+
+---
+
 ## Working with Ralph Scripts
 
 ### Key Commands

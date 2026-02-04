@@ -185,15 +185,18 @@ function Invoke-InitCommand {
     # 1. Verify prerequisites
     Write-Status "Checking prerequisites..." "STEP"
     
-    $tools = @(
+    $requiredTools = @(
         @{ Name = "gt"; Command = "gt version" },
-        @{ Name = "bd"; Command = "bd version" },
         @{ Name = "kimi"; Command = "kimi --version" },
         @{ Name = "git"; Command = "git version" }
     )
     
+    $optionalTools = @(
+        @{ Name = "bd"; Command = "bd version" }
+    )
+    
     $allOk = $true
-    foreach ($tool in $tools) {
+    foreach ($tool in $requiredTools) {
         $found = Get-Command $tool.Name -ErrorAction SilentlyContinue
         if ($found) {
             Write-Status "$($tool.Name): OK" "OK"
@@ -201,6 +204,16 @@ function Invoke-InitCommand {
         else {
             Write-Status "$($tool.Name): NOT FOUND" "ERROR"
             $allOk = $false
+        }
+    }
+    
+    foreach ($tool in $optionalTools) {
+        $found = Get-Command $tool.Name -ErrorAction SilentlyContinue
+        if ($found) {
+            Write-Status "$($tool.Name): OK (optional)" "OK"
+        }
+        else {
+            Write-Status "$($tool.Name): NOT FOUND (optional - Ralph works without it)" "WARN"
         }
     }
     
@@ -233,13 +246,21 @@ function Invoke-InitCommand {
     Write-Status "Creating Ralph directories..." "STEP"
     
     $dirs = @(
+        ".ralph/beads",
         ".ralph/evidence",
+        ".ralph/gates",
         ".ralph/logs",
+        ".ralph/metrics",
         ".ralph/patrol"
     )
     
     foreach ($dir in $dirs) {
         New-Item -ItemType Directory -Force -Path $dir | Out-Null
+        # Create .gitkeep file to preserve directory in git
+        $gitkeep = Join-Path $dir ".gitkeep"
+        if (-not (Test-Path $gitkeep)) {
+            "# Keep this directory in git" | Out-File -FilePath $gitkeep -Encoding utf8
+        }
     }
     Write-Status "  Created .ralph/ structure" "OK"
     

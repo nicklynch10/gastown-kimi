@@ -11,7 +11,7 @@
     1. PowerShell 5.1+ (included with Windows 10/11)
     2. Git for Windows
     3. Gastown CLI (gt) - https://github.com/nicklynch10/gastown-cli
-    4. Beads CLI (bd) - https://github.com/nicklynch10/beads-cli
+    4. Beads CLI (bd) - https://github.com/nicklynch10/beads-cli (OPTIONAL - Ralph works without it)
     5. Kimi Code CLI - pip install kimi-cli
 
 .PARAMETER Install
@@ -109,9 +109,9 @@ function Write-InstallHelp {
     Write-Host "   Verify: gt version" -ForegroundColor Gray
     Write-Host ""
     
-    Write-Host "5. Beads CLI (bd)" -ForegroundColor Yellow
+    Write-Host "5. Beads CLI (bd) - OPTIONAL" -ForegroundColor Yellow
     Write-Host "   Install: go install github.com/nicklynch10/beads-cli/cmd/bd@latest" -ForegroundColor Gray
-    Write-Host "   Verify: bd version" -ForegroundColor Gray
+    Write-Host "   Note: Ralph works without bd using standalone mode" -ForegroundColor Gray
     Write-Host ""
     
     Write-Host "6. Kimi Code CLI" -ForegroundColor Yellow
@@ -347,7 +347,7 @@ $results = @{
     Kimi = Test-CommandAvailable -Name "kimi" -DisplayName "Kimi CLI" -Required:$true
     Go = Test-CommandAvailable -Name "go" -DisplayName "Go" -VersionFlag "version" -Required:$true
     GT = Test-CommandAvailable -Name "gt" -DisplayName "Gastown CLI (gt)" -Required:$true
-    BD = Test-CommandAvailable -Name "bd" -DisplayName "Beads CLI (bd)" -Required:$true
+    BD = Test-CommandAvailable -Name "bd" -DisplayName "Beads CLI (bd)" -Required:$false
     Town = Test-TownStructure
 }
 
@@ -365,7 +365,7 @@ foreach ($check in $results.GetEnumerator()) {
     $name = $check.Key
     $result = $check.Value
     
-    $isRequired = $name -in @("PowerShell", "ExecutionPolicy", "Git", "Kimi", "Go", "GT", "BD")
+    $isRequired = $name -in @("PowerShell", "ExecutionPolicy", "Git", "Kimi", "Go", "GT")
     
     if ($isRequired) {
         $requiredTotal++

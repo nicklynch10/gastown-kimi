@@ -11,7 +11,25 @@ This project integrates [Ralph](https://github.com/snarktank/ralph)'s retry-sema
 - Windows 10/11
 - PowerShell 5.1+
 - Git: `winget install Git.Git`
+- Go: `winget install GoLang.Go` (for building gt CLI)
 - Kimi CLI (optional): `pip install kimi-cli`
+
+#### Building Gastown CLI (gt)
+
+The gt binary must be built with proper version flags:
+
+```powershell
+# Use the provided build script
+.\scripts\build-gt.ps1
+
+# Or build manually with ldflags
+$env:VERSION="dev"
+$env:COMMIT=$(git rev-parse --short HEAD)
+$env:BUILD_TIME=$(Get-Date -Format "o")
+go build -ldflags "-X github.com/steveyegge/gastown/internal/cmd.Version=$env:VERSION -X github.com/steveyegge/gastown/internal/cmd.Commit=$env:COMMIT -X github.com/steveyegge/gastown/internal/cmd.BuildTime=$env:BUILD_TIME -X github.com/steveyegge/gastown/internal/cmd.BuiltProperly=1" -o gt.exe ./cmd/gt
+```
+
+**Note:** The `bd` (Beads) CLI is not required. Ralph works in standalone mode without it.
 
 ### 1. Validate System (1 minute)
 

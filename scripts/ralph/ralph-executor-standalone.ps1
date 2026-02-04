@@ -325,7 +325,8 @@ function Move-BeadWithTransaction {
 #region Bead Operations
 
 function Get-BeadData {
-    if ($Standalone) {
+    # Auto-detect: if bd not available or Standalone specified, use standalone mode
+    if ($Standalone -or -not (Get-Command bd -ErrorAction SilentlyContinue)) {
         return Get-BeadDataStandalone
     } else {
         return Get-BeadDataFull
@@ -378,7 +379,8 @@ function Update-BeadStatus {
         [hashtable]$Metadata = @{}
     )
     
-    if ($Standalone) {
+    # Auto-detect: if bd not available or Standalone specified, use standalone mode
+    if ($Standalone -or -not (Get-Command bd -ErrorAction SilentlyContinue)) {
         Update-BeadStatusStandalone -Status $Status -Metadata $Metadata
     } else {
         Update-BeadStatusFull -Status $Status -Metadata $Metadata
@@ -629,6 +631,13 @@ You MUST ensure ALL of the following verifiers pass:
 $verifierList
 $failureContext
 
+## Important: PowerShell Environment
+You are running in PowerShell 5.1 on Windows.
+- Use semicolons (;) instead of && for command chaining
+- Example: git add file.ps1; git commit -m "message"
+- Use Set-Location instead of cd for changing directories
+- Nest Join-Path calls: Join-Path (Join-Path $root "subdir") "file.txt"
+
 ## Instructions
 1. First, run the verifiers to understand what needs to be implemented (TDD)
 2. Implement the solution to satisfy the intent
@@ -650,8 +659,10 @@ $failureContext
         # Read prompt content and pass via -p flag (Kimi CLI doesn't support --file)
         $promptContent = Get-Content $promptFile -Raw
         
+        # Use --print mode with piped stdin (PowerShell 5.1 compatible)
         $kimiProcess = Start-Process -FilePath "kimi" `
-            -ArgumentList @("--yolo", "-p", $promptContent) `
+            -ArgumentList @("--yolo", "--print") `
+            -RedirectStandardInput $promptFile `
             -NoNewWindow -Wait -PassThru
         
         return $kimiProcess.ExitCode -eq 0
@@ -680,7 +691,7 @@ function Start-RalphExecution {
     Write-Log "  Initial backoff: ${backoff}s" -Level INFO
     
     # Setup evidence directory
-    $evidencePath = if ($EvidenceDir) { $EvidenceDir } else { Join-Path $ProjectRoot ".ralph/evidence/$(if($Standalone){(Split-Path $BeadFile -LeafBase)}else{$BeadId})" }
+    $evidencePath = if ($EvidenceDir) { $EvidenceDir } else { Join-Path $ProjectRoot ".ralph/evidence/$(if($Standalone){([System.IO.Path]::GetFileNameWithoutExtension($BeadFile))}else{$BeadId})" }
     Ensure-Directory -Path $evidencePath
     Write-Log "  Evidence dir: $evidencePath" -Level INFO
     
@@ -788,7 +799,7 @@ function Main {
     Write-Host ""
     
     # Initialize logging
-    Initialize-Logging -BeadId $(if($Standalone){(Split-Path $BeadFile -LeafBase)}else{$BeadId})
+    Initialize-Logging -BeadId $(if($Standalone){([System.IO.Path]::GetFileNameWithoutExtension($BeadFile))}else{$BeadId})
     
     # Check prerequisites
     if (-not (Test-Prerequisites)) {

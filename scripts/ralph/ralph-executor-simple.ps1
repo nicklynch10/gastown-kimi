@@ -129,6 +129,12 @@ Intent: $intent
 Definition of Done - ALL these verifiers MUST pass:
 $verifierList
 
+IMPORTANT: PowerShell 5.1 Environment
+- Use semicolons (;) instead of && for command chaining
+- Example: git add file.ps1; git commit -m "message"
+- Use Set-Location instead of cd
+- Nest Join-Path calls: Join-Path (Join-Path $root "subdir") "file.txt"
+
 Instructions:
 1. First, run the verifiers to understand what needs to be implemented (TDD)
 2. Implement the solution to satisfy the intent
@@ -148,9 +154,11 @@ Output:
     Write-Log "Invoking Kimi..."
     
     try {
-        # Read prompt content and pass via -p flag (Kimi CLI doesn't support --file)
-        $promptContent = Get-Content $tempFile -Raw
-        $proc = Start-Process -FilePath "kimi" -ArgumentList @("--yolo", "-p", $promptContent) -Wait -PassThru -NoNewWindow
+        # Use --print mode with piped stdin (PowerShell 5.1 compatible)
+        $proc = Start-Process -FilePath "kimi" `
+            -ArgumentList @("--yolo", "--print") `
+            -RedirectStandardInput $tempFile `
+            -Wait -PassThru -NoNewWindow
         $kimiExit = $proc.ExitCode
     } catch {
         Write-Log "Kimi invocation failed: $_" "ERROR"
