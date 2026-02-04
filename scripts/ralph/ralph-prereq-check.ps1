@@ -1,329 +1,411 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Ralph-Gastown Prerequisites Checker
+    Ralph-Gastown Prerequisite Checker
 
 .DESCRIPTION
-    Comprehensive prerequisite validation for the Ralph-Gastown SDLC system.
-    Checks all required tools, versions, and environment settings.
+    Checks that all required dependencies are installed before running Ralph.
+    This script MUST pass before any other Ralph operations.
+
+.REQUIRED DEPENDENCIES:
+    1. PowerShell 5.1+ (included with Windows 10/11)
+    2. Git for Windows
+    3. Gastown CLI (gt) - https://github.com/nicklynch10/gastown-cli
+    4. Beads CLI (bd) - https://github.com/nicklynch10/beads-cli
+    5. Kimi Code CLI - pip install kimi-cli
+
+.PARAMETER Install
+    Show installation instructions for missing dependencies.
 
 .PARAMETER Fix
-    Attempt to fix missing prerequisites where possible
-
-.PARAMETER Quiet
-    Return exit code only, minimal output
+    Attempt to auto-fix issues where possible.
 
 .EXAMPLE
     .\ralph-prereq-check.ps1
+    # Check all prerequisites
 
 .EXAMPLE
-    .\ralph-prereq-check.ps1 -Fix
+    .\ralph-prereq-check.ps1 -Install
+    # Show installation help for missing dependencies
 #>
 
 [CmdletBinding()]
 param(
-    [switch]$Fix,
-    [switch]$Quiet
+    [switch]$Install,
+    [switch]$Fix
 )
 
+$ErrorActionPreference = "Stop"
+
+#region Configuration
+
+$REQUIRED_PS_VERSION = [Version]"5.1"
 $SCRIPT_VERSION = "1.0.0"
 
-#region Requirements Definition
-
-$REQUIREMENTS = @{
-    PowerShell = @{
-        Name = "PowerShell"
-        MinVersion = [Version]"5.1"
-        Command = { $PSVersionTable.PSVersion }
-        Required = $true
-        InstallHelp = "PowerShell 5.1+ is included with Windows. For PowerShell 7+, visit https://github.com/PowerShell/PowerShell"
-    }
-    Git = @{
-        Name = "Git"
-        Command = "git"
-        VersionArg = "--version"
-        Required = $true
-        InstallHelp = "Download from https://git-scm.com/download/win or run: winget install Git.Git"
-    }
-    Kimi = @{
-        Name = "Kimi Code CLI"
-        Command = "kimi"
-        VersionArg = "--version"
-        Required = $true
-        InstallHelp = "Install: pip install kimi-cli (requires Python 3.8+)"
-    }
-    Go = @{
-        Name = "Go"
-        Command = "go"
-        VersionArg = "version"
-        Required = $false  # Optional - only needed for Go projects
-        InstallHelp = "Download from https://go.dev/dl/ or run: winget install GoLang.Go"
-    }
-    Node = @{
-        Name = "Node.js"
-        Command = "node"
-        VersionArg = "--version"
-        Required = $false  # Optional - only needed for Node.js/browser testing
-        InstallHelp = "Download from https://nodejs.org/ or run: winget install OpenJS.NodeJS"
-    }
-}
-
 #endregion
 
-#region Output Functions
+#region Console Output
 
-function Write-CheckHeader {
-    if ($Quiet) { return }
-    Write-Host ""
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "    RALPH-GASTOWN PREREQUISITE CHECK    " -ForegroundColor Cyan
-    Write-Host "    Version $SCRIPT_VERSION                  " -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host ""
-}
-
-function Write-CheckResult {
+function Write-Status {
     param(
-        [string]$Tool,
-        [bool]$Passed,
-        [string]$Version = "",
-        [string]$Message = "",
-        [bool]$IsOptional = $false
+        [string]$Message,
+        [string]$Level = "INFO"
     )
-    if ($Quiet) { return }
     
-    $icon = if ($Passed) { "[OK]" } else { if ($IsOptional) { "[WARN]" } else { "[FAIL]" } }
-    $color = if ($Passed) { "Green" } elseif ($IsOptional) { "Yellow" } else { "Red" }
-    
-    $versionStr = if ($Version) { " ($Version)" } else { "" }
-    Write-Host "  $icon $Tool$versionStr" -ForegroundColor $color
-    
-    if ($Message) {
-        Write-Host "       $Message" -ForegroundColor Gray
+    $colors = @{
+        "INFO" = "White"
+        "OK" = "Green"
+        "WARN" = "Yellow"
+        "ERROR" = "Red"
+        "STEP" = "Cyan"
     }
+    
+    $icons = @{
+        "INFO" = "[i]"
+        "OK" = "[+]"
+        "WARN" = "[!]"
+        "ERROR" = "[X]"
+        "STEP" = "[>]"
+    }
+    
+    $color = $colors[$Level]
+    $icon = $icons[$Level]
+    
+    Write-Host "$icon $Message" -ForegroundColor $color
 }
 
-function Write-Section {
-    param([string]$Title)
-    if ($Quiet) { return }
+function Write-Header {
     Write-Host ""
-    Write-Host "$Title" -ForegroundColor Yellow
-    Write-Host ("-" * 50) -ForegroundColor Gray
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  RALPH PREREQUISITE CHECKER v$SCRIPT_VERSION" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
 }
 
-function Write-Footer {
-    param([bool]$AllPassed, [bool]$HasOptionalMissing)
-    if ($Quiet) { return }
+function Write-InstallHelp {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  INSTALLATION INSTRUCTIONS             " -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
     
+    Write-Host "1. PowerShell 5.1+ (usually pre-installed)" -ForegroundColor Yellow
+    Write-Host "   Check: `$PSVersionTable.PSVersion" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "========================================" -ForegroundColor Cyan
-    if ($AllPassed) {
-        Write-Host "    ALL PREREQUISITES SATISFIED        " -ForegroundColor Green
-    } else {
-        Write-Host "    PREREQUISITES MISSING              " -ForegroundColor Red
-    }
-    Write-Host "========================================" -ForegroundColor Cyan
+    
+    Write-Host "2. Git for Windows" -ForegroundColor Yellow
+    Write-Host "   Option A: winget install Git.Git" -ForegroundColor Gray
+    Write-Host "   Option B: https://git-scm.com/download/win" -ForegroundColor Gray
     Write-Host ""
+    
+    Write-Host "3. Go (required for gt and bd CLI tools)" -ForegroundColor Yellow
+    Write-Host "   Option A: winget install GoLang.Go" -ForegroundColor Gray
+    Write-Host "   Option B: https://go.dev/dl/" -ForegroundColor Gray
+    Write-Host "   Verify: go version" -ForegroundColor Gray
+    Write-Host ""
+    
+    Write-Host "4. Gastown CLI (gt)" -ForegroundColor Yellow
+    Write-Host "   Install: go install github.com/nicklynch10/gastown-cli/cmd/gt@latest" -ForegroundColor Gray
+    Write-Host "   Verify: gt version" -ForegroundColor Gray
+    Write-Host ""
+    
+    Write-Host "5. Beads CLI (bd)" -ForegroundColor Yellow
+    Write-Host "   Install: go install github.com/nicklynch10/beads-cli/cmd/bd@latest" -ForegroundColor Gray
+    Write-Host "   Verify: bd version" -ForegroundColor Gray
+    Write-Host ""
+    
+    Write-Host "6. Kimi Code CLI" -ForegroundColor Yellow
+    Write-Host "   Requires Python 3.8+" -ForegroundColor Gray
+    Write-Host "   Install: pip install kimi-cli" -ForegroundColor Gray
+    Write-Host "   Or: pip3 install kimi-cli" -ForegroundColor Gray
+    Write-Host "   Verify: kimi --version" -ForegroundColor Gray
+    Write-Host ""
+    
+    Write-Host "========================================" -ForegroundColor Cyan
 }
 
 #endregion
 
-#region Check Functions
-
-function Test-CommandExists {
-    param([string]$Command)
-    return (Get-Command $Command -ErrorAction SilentlyContinue) -ne $null
-}
-
-function Get-ToolVersion {
-    param([string]$Command, [string]$VersionArg)
-    
-    try {
-        $output = & $Command $VersionArg 2>&1 | Select-Object -First 1
-        return $output
-    } catch {
-        return $null
-    }
-}
+#region Checks
 
 function Test-PowerShellVersion {
-    $version = $PSVersionTable.PSVersion
-    $minVersion = $REQUIREMENTS.PowerShell.MinVersion
+    Write-Status "Checking PowerShell version..." "STEP"
     
-    return @{
-        Passed = $version -ge $minVersion
-        Version = $version.ToString()
-        Message = if ($version -ge $minVersion) { "" } else { "Version $version is below minimum $minVersion" }
-    }
-}
-
-function Test-Tool {
-    param([hashtable]$Requirement)
+    $currentVersion = $PSVersionTable.PSVersion
+    $meetsRequirement = $currentVersion -ge $REQUIRED_PS_VERSION
     
-    $exists = Test-CommandExists -Command $Requirement.Command
-    
-    if (-not $exists) {
-        return @{
-            Passed = $false
-            Version = ""
-            Message = "Not found in PATH. $($Requirement.InstallHelp)"
-        }
-    }
-    
-    $version = if ($Requirement.VersionArg) {
-        Get-ToolVersion -Command $Requirement.Command -VersionArg $Requirement.VersionArg
-    } else { "" }
-    
-    return @{
-        Passed = $true
-        Version = $version
-        Message = ""
+    if ($meetsRequirement) {
+        Write-Status "PowerShell $currentVersion [OK]" "OK"
+        return @{ Passed = $true; Version = $currentVersion }
+    } else {
+        Write-Status "PowerShell $currentVersion [FAIL - Requires $REQUIRED_PS_VERSION+]" "ERROR"
+        return @{ Passed = $false; Version = $currentVersion }
     }
 }
 
 function Test-ExecutionPolicy {
+    Write-Status "Checking execution policy..." "STEP"
+    
     $policy = Get-ExecutionPolicy
     $effectivePolicy = Get-ExecutionPolicy -Scope Process
     
-    $isRestricted = $policy -eq "Restricted" -or $effectivePolicy -eq "Restricted"
+    $acceptablePolicies = @("RemoteSigned", "Unrestricted", "Bypass")
     
-    return @{
-        Passed = -not $isRestricted
-        CurrentPolicy = $policy
-        ProcessPolicy = $effectivePolicy
-        Message = if ($isRestricted) { "Execution policy is Restricted. Run: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" } else { "" }
+    if ($acceptablePolicies -contains $effectivePolicy) {
+        Write-Status "Execution Policy: $effectivePolicy [OK]" "OK"
+        return @{ Passed = $true; Policy = $effectivePolicy }
+    } else {
+        Write-Status "Execution Policy: $effectivePolicy [WARN]" "WARN"
+        Write-Status "  Current policy may prevent script execution" "WARN"
+        Write-Status "  Current user policy: $policy" "INFO"
+        
+        if ($Fix) {
+            Write-Status "Attempting to set execution policy..." "STEP"
+            try {
+                Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+                Write-Status "Execution policy set to RemoteSigned for current process" "OK"
+                return @{ Passed = $true; Policy = "RemoteSigned (fixed)" }
+            } catch {
+                Write-Status "Failed to set execution policy: $_" "ERROR"
+            }
+        }
+        
+        return @{ 
+            Passed = $false
+            Policy = $effectivePolicy
+            FixCommand = "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
+        }
+    }
+}
+
+function Test-CommandAvailable {
+    param(
+        [string]$Name,
+        [string]$DisplayName,
+        [string]$VersionFlag = "--version",
+        [switch]$Required
+    )
+    
+    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+    
+    if ($cmd) {
+        try {
+            $versionOutput = & $Name $VersionFlag 2>&1 | Select-Object -First 1
+            Write-Status "$DisplayName found: $versionOutput" "OK"
+            return @{ Passed = $true; Path = $cmd.Source; Version = $versionOutput }
+        } catch {
+            Write-Status "$DisplayName found (version check failed)" "OK"
+            return @{ Passed = $true; Path = $cmd.Source; Version = "unknown" }
+        }
+    } else {
+        $level = if ($Required) { "ERROR" } else { "WARN" }
+        Write-Status "$DisplayName not found in PATH" $level
+        return @{ Passed = (-not $Required); Required = $Required }
     }
 }
 
 function Test-GitConfiguration {
+    Write-Status "Checking Git configuration..." "STEP"
+    
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if (-not $git) {
+        Write-Status "Git not found, skipping config check" "WARN"
+        return @{ Passed = $false }
+    }
+    
     try {
         $userName = git config user.name 2>$null
         $userEmail = git config user.email 2>$null
         
-        $missing = @()
-        if (-not $userName) { $missing += "user.name" }
-        if (-not $userEmail) { $missing += "user.email" }
-        
-        return @{
-            Passed = $missing.Count -eq 0
-            Message = if ($missing.Count -gt 0) { "Missing git config: $($missing -join ', '). Run: git config --global user.name 'Your Name' && git config --global user.email 'your@email.com'" } else { "" }
+        if (-not $userName -or -not $userEmail) {
+            Write-Status "Git user name or email not set" "WARN"
+            Write-Status "  Run: git config --global user.name 'Your Name'" "INFO"
+            Write-Status "  Run: git config --global user.email 'your@email.com'" "INFO"
+            return @{ Passed = $false; UserName = $userName; UserEmail = $userEmail }
         }
+        
+        Write-Status "Git configured: $userName <$userEmail>" "OK"
+        return @{ Passed = $true; UserName = $userName; UserEmail = $userEmail }
     } catch {
-        return @{
-            Passed = $false
-            Message = "Git configuration check failed: $_"
+        Write-Status "Git config check failed: $_" "WARN"
+        return @{ Passed = $false }
+    }
+}
+
+function Test-LineEndingConfiguration {
+    Write-Status "Checking Git line ending configuration..." "STEP"
+    
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if (-not $git) {
+        return @{ Passed = $true }  # Skip if git not available
+    }
+    
+    $coreAutocrlf = git config core.autocrlf 2>$null
+    
+    if ($coreAutocrlf -eq "true" -or $coreAutocrlf -eq "input") {
+        Write-Status "Git core.autocrlf = $coreAutocrlf [OK]" "OK"
+        return @{ Passed = $true; Setting = $coreAutocrlf }
+    } else {
+        Write-Status "Git core.autocrlf not set (recommended: true)" "WARN"
+        Write-Status "  Run: git config --global core.autocrlf true" "INFO"
+        return @{ 
+            Passed = $true  # Not a blocking issue
+            Setting = $coreAutocrlf
+            Recommendation = "git config --global core.autocrlf true"
         }
     }
 }
 
-#endregion
-
-#region Main Check Logic
-
-function Start-PrerequisiteCheck {
-    Write-CheckHeader
+function Test-TownStructure {
+    Write-Status "Checking Gastown town structure..." "STEP"
     
-    $results = @{
-        RequiredPassed = 0
-        RequiredTotal = 0
-        OptionalPassed = 0
-        OptionalTotal = 0
-        Failed = @()
+    $gt = Get-Command gt -ErrorAction SilentlyContinue
+    if (-not $gt) {
+        Write-Status "gt CLI not found, cannot check town structure" "WARN"
+        return @{ Passed = $false; Reason = "gt not available" }
     }
     
-    Write-Section -Title "Core Requirements"
-    
-    # Check PowerShell
-    $psResult = Test-PowerShellVersion
-    $results.RequiredTotal++
-    if ($psResult.Passed) { $results.RequiredPassed++ }
-    else { $results.Failed += "PowerShell" }
-    Write-CheckResult -Tool "PowerShell" -Passed $psResult.Passed -Version $psResult.Version -Message $psResult.Message
-    
-    # Check Execution Policy
-    $execResult = Test-ExecutionPolicy
-    if (-not $Quiet) {
-        $icon = if ($execResult.Passed) { "[OK]" } else { "[WARN]" }
-        $color = if ($execResult.Passed) { "Green" } else { "Yellow" }
-        Write-Host "  $icon Execution Policy: $($execResult.CurrentPolicy) (Process: $($execResult.ProcessPolicy))" -ForegroundColor $color
-        if ($execResult.Message) {
-            Write-Host "       $($execResult.Message)" -ForegroundColor Gray
+    try {
+        $townRoot = & gt root 2>$null
+        if ($LASTEXITCODE -eq 0 -and $townRoot) {
+            Write-Status "In Gastown town: $townRoot" "OK"
+            
+            # Check for required directories
+            $requiredDirs = @(".beads", ".githooks")
+            $missingDirs = @()
+            
+            foreach ($dir in $requiredDirs) {
+                $fullPath = Join-Path $townRoot $dir
+                if (-not (Test-Path $fullPath)) {
+                    $missingDirs += $dir
+                }
+            }
+            
+            if ($missingDirs.Count -eq 0) {
+                Write-Status "All required directories present" "OK"
+                return @{ Passed = $true; TownRoot = $townRoot }
+            } else {
+                Write-Status "Missing directories: $($missingDirs -join ', ')" "WARN"
+                return @{ Passed = $true; TownRoot = $townRoot; MissingDirs = $missingDirs }
+            }
+        } else {
+            Write-Status "Not in a Gastown town" "WARN"
+            Write-Status "  Run: gt init (to initialize a new town)" "INFO"
+            return @{ Passed = $false; Reason = "Not in a town" }
         }
+    } catch {
+        Write-Status "Town check failed: $_" "WARN"
+        return @{ Passed = $false; Reason = $_.Exception.Message }
     }
+}
+
+function Test-PythonAvailability {
+    Write-Status "Checking Python availability..." "STEP"
     
-    # Check Git
-    $gitResult = Test-Tool -Requirement $REQUIREMENTS.Git
-    $results.RequiredTotal++
-    if ($gitResult.Passed) { $results.RequiredPassed++ }
-    else { $results.Failed += "Git" }
-    Write-CheckResult -Tool "Git" -Passed $gitResult.Passed -Version $gitResult.Version -Message $gitResult.Message
+    $pythonCommands = @("python", "python3", "py")
+    $foundPython = $null
     
-    # Check Git configuration
-    if ($gitResult.Passed) {
-        $gitConfigResult = Test-GitConfiguration
-        if (-not $Quiet) {
-            $icon = if ($gitConfigResult.Passed) { "[OK]" } else { "[WARN]" }
-            $color = if ($gitConfigResult.Passed) { "Green" } else { "Yellow" }
-            Write-Host "  $icon Git Configuration" -ForegroundColor $color
-            if ($gitConfigResult.Message) {
-                Write-Host "       $($gitConfigResult.Message)" -ForegroundColor Gray
+    foreach ($cmd in $pythonCommands) {
+        $found = Get-Command $cmd -ErrorAction SilentlyContinue
+        if ($found) {
+            try {
+                $version = & $cmd --version 2>&1 | Select-Object -First 1
+                Write-Status "Python found: $cmd - $version" "OK"
+                $foundPython = @{ Command = $cmd; Path = $found.Source; Version = $version }
+                break
+            } catch {
+                continue
             }
         }
     }
     
-    # Check Kimi (Required)
-    Write-Section -Title "Ralph-Specific Requirements"
-    $kimiResult = Test-Tool -Requirement $REQUIREMENTS.Kimi
-    $results.RequiredTotal++
-    if ($kimiResult.Passed) { $results.RequiredPassed++ }
-    else { $results.Failed += "Kimi" }
-    Write-CheckResult -Tool "Kimi Code CLI" -Passed $kimiResult.Passed -Version $kimiResult.Version -Message $kimiResult.Message
-    
-    Write-Section -Title "Optional Requirements"
-    
-    # Check Go (Optional)
-    $goResult = Test-Tool -Requirement $REQUIREMENTS.Go
-    $results.OptionalTotal++
-    if ($goResult.Passed) { $results.OptionalPassed++ }
-    Write-CheckResult -Tool "Go" -Passed $goResult.Passed -Version $goResult.Version -Message $goResult.Message -IsOptional:$true
-    
-    # Check Node (Optional)
-    $nodeResult = Test-Tool -Requirement $REQUIREMENTS.Node
-    $results.OptionalTotal++
-    if ($nodeResult.Passed) { $results.OptionalPassed++ }
-    Write-CheckResult -Tool "Node.js" -Passed $nodeResult.Passed -Version $nodeResult.Version -Message $nodeResult.Message -IsOptional:$true
-    
-    # Summary
-    $allRequiredPassed = $results.RequiredPassed -eq $results.RequiredTotal
-    $hasOptionalMissing = $results.OptionalPassed -lt $results.OptionalTotal
-    
-    Write-Footer -AllPassed $allRequiredPassed -HasOptionalMissing:$hasOptionalMissing
-    
-    if (-not $Quiet) {
-        Write-Host "Required: $($results.RequiredPassed)/$($results.RequiredTotal) passed" -ForegroundColor $(if($allRequiredPassed){"Green"}else{"Red"})
-        Write-Host "Optional: $($results.OptionalPassed)/$($results.OptionalTotal) passed" -ForegroundColor Yellow
-        
-        if ($results.Failed.Count -gt 0) {
-            Write-Host ""
-            Write-Host "Missing Required Tools:" -ForegroundColor Red
-            foreach ($tool in $results.Failed) {
-                Write-Host "  - $tool" -ForegroundColor Yellow
-            }
-        }
+    if (-not $foundPython) {
+        Write-Status "Python not found in PATH" "ERROR"
+        Write-Status "  Kimi CLI requires Python 3.8+" "INFO"
+        return @{ Passed = $false }
     }
     
-    return $allRequiredPassed
+    return @{ Passed = $true; Python = $foundPython }
 }
 
 #endregion
 
 #region Main
 
-$passed = Start-PrerequisiteCheck
+Write-Header
 
-if ($passed) {
+Write-Status "Checking prerequisites for Ralph-Gastown..." "STEP"
+Write-Host ""
+
+$results = @{
+    PowerShell = Test-PowerShellVersion
+    ExecutionPolicy = Test-ExecutionPolicy
+    Python = Test-PythonAvailability
+    Git = Test-CommandAvailable -Name "git" -DisplayName "Git" -VersionFlag "--version" -Required:$true
+    GitConfig = Test-GitConfiguration
+    LineEndings = Test-LineEndingConfiguration
+    Kimi = Test-CommandAvailable -Name "kimi" -DisplayName "Kimi CLI" -Required:$true
+    Go = Test-CommandAvailable -Name "go" -DisplayName "Go" -VersionFlag "version" -Required:$true
+    GT = Test-CommandAvailable -Name "gt" -DisplayName "Gastown CLI (gt)" -Required:$true
+    BD = Test-CommandAvailable -Name "bd" -DisplayName "Beads CLI (bd)" -Required:$true
+    Town = Test-TownStructure
+}
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  PREREQUISITE CHECK SUMMARY            " -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+$requiredPassed = 0
+$requiredTotal = 0
+$warnings = 0
+
+foreach ($check in $results.GetEnumerator()) {
+    $name = $check.Key
+    $result = $check.Value
+    
+    $isRequired = $name -in @("PowerShell", "ExecutionPolicy", "Git", "Kimi", "Go", "GT", "BD")
+    
+    if ($isRequired) {
+        $requiredTotal++
+        if ($result.Passed) {
+            $requiredPassed++
+            Write-Host "[PASS] $name" -ForegroundColor Green
+        } else {
+            Write-Host "[FAIL] $name" -ForegroundColor Red
+        }
+    } else {
+        if ($result.Passed) {
+            Write-Host "[OK]   $name" -ForegroundColor Green
+        } else {
+            Write-Host "[WARN] $name" -ForegroundColor Yellow
+            $warnings++
+        }
+    }
+}
+
+Write-Host ""
+Write-Host "Required: $requiredPassed/$requiredTotal passed" -ForegroundColor $(if($requiredPassed -eq $requiredTotal){"Green"}else{"Red"})
+Write-Host "Warnings: $warnings" -ForegroundColor $(if($warnings -eq 0){"Green"}else{"Yellow"})
+
+Write-Host ""
+
+if ($requiredPassed -eq $requiredTotal) {
+    Write-Status "ALL PREREQUISITES MET" "OK"
+    Write-Status "You can now use Ralph-Gastown" "OK"
+    
+    if ($Install) {
+        Write-InstallHelp
+    }
+    
     exit 0
 } else {
+    Write-Status "MISSING PREREQUISITES" "ERROR"
+    Write-Status "Please install the missing dependencies listed above" "ERROR"
+    
+    Write-InstallHelp
+    
     exit 1
 }
 

@@ -58,3 +58,14 @@ CLAUDE.md
 logs/
 settings/
 .events.jsonl
+
+# Archive and temp directories
+/archive/
+/temp/
+
+# Ralph runtime
+.ralph/logs/
+.ralph/metrics/
+!/.ralph/beads/.gitkeep
+!/.ralph/gates/.gitkeep
+!/.ralph/logs/.gitkeep

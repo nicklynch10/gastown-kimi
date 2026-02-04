@@ -1,0 +1,9 @@
+﻿{
+    "id":  "gt-gate-green-test",
+    "status":  "GREEN",
+    "blocks_convoy":  false,
+    "verifier_command":  "exit 0",
+    "type":  "gate",
+    "title":  "GREEN Gate - Passing",
+    "gate_type":  "test"
+}

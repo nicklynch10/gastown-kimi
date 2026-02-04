@@ -411,13 +411,16 @@ function Invoke-PatrolCommand {
     
     Write-Status "Starting Ralph patrol..." "STEP"
     
+    # Patrol runs via watchdog script (bd mol command doesn't exist)
     if ($TargetRig) {
-        # Create patrol wisp in rig
-        & bd mol wisp molecule-ralph-patrol --var patrol_interval=300
+        Write-Status "Patrol is managed via watchdog, not molecules" "INFO"
+        Write-Status "Starting watchdog for rig: $TargetRig" "INFO"
+        & "$SCRIPTS_DIR/ralph-watchdog-prod.ps1" -RunOnce
     }
     else {
-        Write-Status "Patrol runs as continuous wisp" "INFO"
-        Write-Status "Use: gt sling molecule-ralph-patrol <rig>" "INFO"
+        Write-Status "Patrol runs via watchdog script" "INFO"
+        Write-Status "Use: ralph-master.ps1 -Command watchdog" "INFO"
+        & "$SCRIPTS_DIR/ralph-watchdog-prod.ps1" -RunOnce
     }
 }
 

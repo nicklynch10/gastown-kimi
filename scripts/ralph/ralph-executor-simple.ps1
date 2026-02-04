@@ -148,7 +148,9 @@ Output:
     Write-Log "Invoking Kimi..."
     
     try {
-        $proc = Start-Process -FilePath "kimi" -ArgumentList "--yolo --file `"$tempFile`"" -Wait -PassThru -NoNewWindow
+        # Read prompt content and pass via -p flag (Kimi CLI doesn't support --file)
+        $promptContent = Get-Content $tempFile -Raw
+        $proc = Start-Process -FilePath "kimi" -ArgumentList @("--yolo", "-p", $promptContent) -Wait -PassThru -NoNewWindow
         $kimiExit = $proc.ExitCode
     } catch {
         Write-Log "Kimi invocation failed: $_" "ERROR"

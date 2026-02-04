@@ -1,18 +1,10 @@
 ﻿{
-    "config":  {
-                   "maxRestarts":  5,
-                   "staleThreshold":  30,
-                   "watchInterval":  300
-               },
-    "uptime":  7.2184499999999993E-05,
-    "timestamp":  "2026-02-03T08:44:08.2416273-05:00",
-    "metrics":  {
-                    "Nudges":  0,
-                    "Restarts":  0,
-                    "Runs":  1,
-                    "Failures":  0,
-                    "BeadsProcessed":  0,
-                    "AlertsSent":  0
-                },
-    "version":  "1.1.0-PROD"
+    "total_runs":  3,
+    "beads_processed":  5,
+    "nudges_sent":  0,
+    "restarts_done":  0,
+    "failures":  3,
+    "last_run":  "2026-02-03T22:20:16.0420907-05:00",
+    "start_time":  "2026-02-03T21:30:00-05:00",
+    "version":  "1.1.0"
 }

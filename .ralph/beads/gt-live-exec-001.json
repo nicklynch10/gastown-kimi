@@ -1,0 +1,60 @@
+﻿{
+    "id":  "gt-live-exec-001",
+    "intent":  "Test actual executor with real commands",
+    "title":  "Live Executor Test",
+    "ralph_meta":  {
+                       "retry_backoff_seconds":  5,
+                       "failure_reason":  "Max iterations reached",
+                       "last_attempt":  "2026-02-03T21:42:17.6909672-05:00",
+                       "attempt_count":  1,
+                       "verifier_results":  [
+                                                {
+                                                    "Passed":  true,
+                                                    "Name":  "PowerShell Version Check",
+                                                    "Timestamp":  "2026-02-03T21:42:17.9915632-05:00",
+                                                    "Stderr":  "",
+                                                    "Reason":  null,
+                                                    "Stdout":  "5\r\n"
+                                                },
+                                                {
+                                                    "Passed":  true,
+                                                    "Name":  "Directory Listing",
+                                                    "Timestamp":  "2026-02-03T21:42:18.2139324-05:00",
+                                                    "Stderr":  "",
+                                                    "Reason":  null,
+                                                    "Stdout":  "53\r\n"
+                                                }
+                                            ],
+                       "last_failure_summary":  "",
+                       "status":  "completed"
+                   },
+    "type":  "task",
+    "dod":  {
+                "evidence_required":  false,
+                "verifiers":  [
+                                  {
+                                      "timeout_seconds":  30,
+                                      "command":  "$PSVersionTable.PSVersion.Major",
+                                      "name":  "PowerShell Version Check",
+                                      "expect":  {
+                                                     "exit_code":  0
+                                                 }
+                                  },
+                                  {
+                                      "timeout_seconds":  30,
+                                      "command":  "(Get-ChildItem).Count",
+                                      "name":  "Directory Listing",
+                                      "expect":  {
+                                                     "exit_code":  0
+                                                 }
+                                  }
+                              ]
+            },
+    "priority":  1,
+    "constraints":  {
+                        "time_budget_minutes":  5,
+                        "max_iterations":  3
+                    },
+    "status":  "completed",
+    "last_updated":  "2026-02-03T21:42:18.2425721-05:00"
+}

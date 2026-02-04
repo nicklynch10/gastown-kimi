@@ -1,0 +1,29 @@
+{
+    "id": "gt-ralph-9469",
+    "title": "Full integration test",
+    "type": "task",
+    "status": "pending",
+    "priority": 2,
+    "intent": "Full integration test",
+    "dod": {
+        "evidence_required": false,
+        "verifiers": [
+            {
+                "name": "Integration check",
+                "command": "Test-Path '.ralph'",
+                "timeout_seconds": 30,
+                "expect": {
+                    "exit_code": 0
+                }
+            }
+        ]
+    },
+    "ralph_meta": {
+        "attempt_count": 0,
+        "executor_version": "ralph-v1"
+    },
+    "constraints": {
+        "max_iterations": 10,
+        "time_budget_minutes": 60
+    }
+}

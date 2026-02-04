@@ -1,0 +1,11 @@
+﻿{
+    "id": "gt-gate-9868",
+    "title": "[GATE] smoke check",
+    "type": "gate",
+    "priority": 0,
+    "description": "gate_type: smoke\nblocks_convoy: true\nverifier_command: go test -run TestSmoke ./...\nauto_close_on_pass: true",
+    "gate_type": "smoke",
+    "blocks_convoy": true,
+    "verifier_command": "go test -run TestSmoke ./...",
+    "auto_close_on_pass": true
+}

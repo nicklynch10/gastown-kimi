@@ -22,6 +22,9 @@
 .PARAMETER EvidenceDir
     Directory to store evidence (default: .ralph/evidence/<bead_id>).
 
+.PARAMETER DryRun
+    Show what would be done without making changes.
+
 .EXAMPLE
     .\ralph-executor.ps1 -BeadId "gt-abc12"
 
@@ -47,13 +50,15 @@ param(
     [switch]$DryRun
 )
 
-# Error action preference
-$ErrorActionPreference = "Stop"
+# Error action preference - Continue so we can handle errors gracefully
+$ErrorActionPreference = "Continue"
 
 #region Constants
 
-$RALPH_VERSION = "1.0.0"
+$RALPH_VERSION = "1.1.0"
 $DEFAULT_BACKOFF_SECONDS = 30
+$LogDir = Join-Path ".ralph" "logs"
+$LogFile = Join-Path $LogDir "executor-$(Get-Date -Format 'yyyyMMdd').log"
 
 #endregion
 
@@ -69,6 +74,35 @@ function Write-RalphLog {
         default { "White" }
     }
     Write-Host "[$timestamp] [$Level] $Message" -ForegroundColor $color
+    
+    # Write to log file with retry for file locking
+    $logEntry = "[$timestamp] [$Level] $Message"
+    $maxRetries = 3
+    $retryDelay = 100  # milliseconds
+    
+    for ($i = 0; $i -lt $maxRetries; $i++) {
+        try {
+            # Ensure log directory exists
+            if (-not (Test-Path $LogDir)) {
+                New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+            }
+            # Use StreamWriter with exclusive access for atomic writes
+            $writer = [System.IO.StreamWriter]::new($LogFile, $true)
+            $writer.WriteLine($logEntry)
+            $writer.Close()
+            $writer.Dispose()
+            break
+        }
+        catch {
+            if ($i -eq $maxRetries - 1) {
+                # Last retry failed, write to console only
+                Write-Host "[WARN] Could not write to log file: $_" -ForegroundColor Yellow
+            }
+            else {
+                Start-Sleep -Milliseconds $retryDelay
+            }
+        }
+    }
 }
 
 function Write-RalphBanner {
@@ -87,6 +121,20 @@ function Get-BeadData {
     
     Write-RalphLog "Loading bead $Id..."
     
+    # Try to load from .ralph/beads/ first (local file mode)
+    $localBeadPath = Join-Path (Join-Path (Join-Path "." ".ralph") "beads") "$Id.json"
+    if (Test-Path $localBeadPath) {
+        try {
+            $content = Get-Content $localBeadPath -Raw -Encoding UTF8
+            return $content | ConvertFrom-Json
+        }
+        catch {
+            Write-RalphLog "Failed to parse local bead file: $_" "ERROR"
+            throw "Failed to load bead ${Id}: $_"
+        }
+    }
+    
+    # Fall back to bd CLI
     try {
         $output = & bd show $Id --json 2>&1
         if ($LASTEXITCODE -ne 0) {
@@ -105,14 +153,49 @@ function Update-RalphMeta {
         [hashtable]$Meta
     )
     
-    $json = $Meta | ConvertTo-Json -Compress -Depth 10
-    $escaped = $json -replace '"', '\"'
-    
-    try {
-        & bd update $Id --notes "ralph_meta: $json" | Out-Null
+    # Update local file if it exists
+    $localBeadPath = Join-Path (Join-Path (Join-Path "." ".ralph") "beads") "$Id.json"
+    if (Test-Path $localBeadPath) {
+        try {
+            $content = Get-Content $localBeadPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if (-not $content.ralph_meta) {
+                $content | Add-Member -NotePropertyName "ralph_meta" -NotePropertyValue @{} -Force
+            }
+            foreach ($key in $Meta.Keys) {
+                $content.ralph_meta | Add-Member -NotePropertyName $key -NotePropertyValue $Meta[$key] -Force
+            }
+            $content | ConvertTo-Json -Depth 10 | Out-File -FilePath $localBeadPath -Encoding utf8
+        }
+        catch {
+            Write-RalphLog "Warning: Failed to update ralph_meta in file: $_" "WARN"
+        }
     }
-    catch {
-        Write-RalphLog "Warning: Failed to update ralph_meta: $_" "WARN"
+    
+    # Note: bd CLI update with notes is not supported, local file update is sufficient
+}
+
+function Update-BeadStatus {
+    param(
+        [string]$Id,
+        [string]$Status,
+        [string]$ErrorMessage = ""
+    )
+    
+    $localBeadPath = Join-Path (Join-Path (Join-Path "." ".ralph") "beads") "$Id.json"
+    if (Test-Path $localBeadPath) {
+        try {
+            $content = Get-Content $localBeadPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $content | Add-Member -NotePropertyName "status" -NotePropertyValue $Status -Force
+            if ($ErrorMessage) {
+                $content | Add-Member -NotePropertyName "last_error" -NotePropertyValue $ErrorMessage -Force
+            }
+            $content | Add-Member -NotePropertyName "last_updated" -NotePropertyValue (Get-Date -Format "o") -Force
+            $content | ConvertTo-Json -Depth 10 | Out-File -FilePath $localBeadPath -Encoding utf8
+            Write-RalphLog "Updated bead status to: $Status"
+        }
+        catch {
+            Write-RalphLog "Warning: Failed to update bead status: $_" "WARN"
+        }
     }
 }
 
@@ -121,7 +204,7 @@ function Update-RalphMeta {
 #region Verifier Execution
 
 function Test-Verifier {
-    param([hashtable]$Verifier)
+    param([object]$Verifier)
     
     $name = $Verifier.name
     $command = $Verifier.command
@@ -132,14 +215,28 @@ function Test-Verifier {
     Write-RalphLog "  Command: $command"
     
     try {
-        # Create temporary files for output capture
-        $stdoutFile = [System.IO.Path]::GetTempFileName()
-        $stderrFile = [System.IO.Path]::GetTempFileName()
+        # Create a temporary script file to execute the command
+        # This is more reliable than passing complex commands via -Command parameter
+        $scriptFile = [System.IO.Path]::GetTempFileName()
+        $scriptFile = [System.IO.Path]::ChangeExtension($scriptFile, ".ps1")
+        
+        # Write the command to the script file
+        $scriptContent = @"
+`$ErrorActionPreference = "Continue"
+try {
+    $command
+    exit `$LASTEXITCODE
+} catch {
+    Write-Error "`$_"
+    exit 1
+}
+"@
+        $scriptContent | Out-File -FilePath $scriptFile -Encoding utf8
         
         # Start process with timeout
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$command`""
+        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptFile`""
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.UseShellExecute = $false
@@ -151,8 +248,14 @@ function Test-Verifier {
         $completed = $process.WaitForExit($timeout * 1000)
         
         if (-not $completed) {
-            $process.Kill()
-            throw "Verifier timed out after ${timeout}s"
+            try { $process.Kill() } catch {}
+            Remove-Item $scriptFile -ErrorAction SilentlyContinue
+            return @{
+                Passed = $false
+                Reason = "Verifier timed out after ${timeout}s"
+                Stdout = ""
+                Stderr = "Timeout: Process did not complete within ${timeout} seconds"
+            }
         }
         
         $stdout = $process.StandardOutput.ReadToEnd()
@@ -160,6 +263,11 @@ function Test-Verifier {
         $exitCode = $process.ExitCode
         
         $process.Dispose()
+        Remove-Item $scriptFile -ErrorAction SilentlyContinue
+        
+        Write-RalphLog "  Exit code: $exitCode"
+        if ($stdout) { Write-RalphLog "  Stdout: $($stdout.Substring(0, [Math]::Min(200, $stdout.Length)))..." }
+        if ($stderr) { Write-RalphLog "  Stderr: $($stderr.Substring(0, [Math]::Min(200, $stderr.Length)))..." }
         
         # Check exit code
         $expectedExit = if ($expect.exit_code) { $expect.exit_code } else { 0 }
@@ -224,6 +332,8 @@ function Test-AllVerifiers {
             Name = $v.name
             Passed = $result.Passed
             Reason = $result.Reason
+            Stdout = $result.Stdout
+            Stderr = $result.Stderr
             Timestamp = (Get-Date -Format "o")
         }
         
@@ -254,7 +364,7 @@ function Test-AllVerifiers {
 function Invoke-KimiImplementation {
     param(
         [string]$BeadId,
-        [hashtable]$BeadData,
+        [object]$BeadData,
         [array]$LastFailureResults,
         [int]$Iteration
     )
@@ -313,24 +423,73 @@ function Invoke-KimiImplementation {
     Write-RalphLog "  Prompt file: $promptFile"
     
     if ($DryRun) {
-        Write-RalphLog "  [DRY RUN] Would invoke: kimi $KimiArgs --file $promptFile"
+        Write-RalphLog "  [DRY RUN] Would invoke: kimi $KimiArgs with prompt file"
+        Remove-Item $promptFile -ErrorAction SilentlyContinue
         return $true
     }
     
     try {
-        # Invoke Kimi
-        $kimiProcess = Start-Process -FilePath "kimi" `
-            -ArgumentList "$KimiArgs --file `"$promptFile`"" `
-            -NoNewWindow -Wait -PassThru
+        # Check if kimi is available
+        $kimiPath = Get-Command kimi -ErrorAction SilentlyContinue
+        if (-not $kimiPath) {
+            Write-RalphLog "Kimi CLI not found. Skipping Kimi invocation." "WARN"
+            Remove-Item $promptFile -ErrorAction SilentlyContinue
+            return $true  # Return true to allow verifiers to run
+        }
         
-        return $kimiProcess.ExitCode -eq 0
+        # Invoke Kimi with prompt file via stdin
+        # Kimi CLI supports: kimi [OPTIONS] COMMAND [ARGS]...
+        # We use 'kimi --yolo' and pipe the prompt via stdin
+        $promptContent = Get-Content $promptFile -Raw
+        
+        Write-RalphLog "  Starting Kimi process..."
+        
+        # Create process to invoke Kimi with piped input
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = "kimi"
+        $psi.Arguments = $KimiArgs
+        $psi.RedirectStandardInput = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.UseShellExecute = $false
+        $psi.WorkingDirectory = (Get-Location)
+        
+        $process = [System.Diagnostics.Process]::Start($psi)
+        
+        # Write prompt to stdin
+        $process.StandardInput.WriteLine($promptContent)
+        $process.StandardInput.Close()
+        
+        # Wait for Kimi to complete (with 10-minute timeout)
+        $completed = $process.WaitForExit(600000)
+        
+        if (-not $completed) {
+            try { $process.Kill() } catch {}
+            Write-RalphLog "Kimi process timed out after 10 minutes" "ERROR"
+            Remove-Item $promptFile -ErrorAction SilentlyContinue
+            return $false
+        }
+        
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
+        $exitCode = $process.ExitCode
+        
+        $process.Dispose()
+        
+        Write-RalphLog "  Kimi exit code: $exitCode"
+        if ($stderr) {
+            Write-RalphLog "  Kimi stderr: $stderr" "WARN"
+        }
+        
+        Remove-Item $promptFile -ErrorAction SilentlyContinue
+        
+        # Kimi returns 0 on success, non-zero on failure
+        return $exitCode -eq 0
     }
     catch {
         Write-RalphLog "Kimi invocation failed: $_" "ERROR"
-        return $false
-    }
-    finally {
         Remove-Item $promptFile -ErrorAction SilentlyContinue
+        return $false
     }
 }
 
@@ -341,7 +500,7 @@ function Invoke-KimiImplementation {
 function Start-RalphLoop {
     param(
         [string]$Id,
-        [hashtable]$Data
+        [object]$Data
     )
     
     $verifiers = $Data.dod.verifiers
@@ -352,6 +511,9 @@ function Start-RalphLoop {
     Write-RalphLog "  Verifiers: $($verifiers.Count)"
     Write-RalphLog "  Max iterations: $maxIter"
     Write-RalphLog "  Backoff: ${backoff}s"
+    
+    # Mark bead as in_progress
+    Update-BeadStatus -Id $Id -Status "in_progress"
     
     $lastResults = $null
     $iteration = 0
@@ -364,13 +526,15 @@ function Start-RalphLoop {
         Update-RalphMeta -Id $Id -Meta @{
             attempt_count = $iteration
             last_attempt = (Get-Date -Format "o")
+            status = "in_progress"
         }
         
         # Step 1: Invoke Kimi with context
+        $failureResults = if ($lastResults) { $lastResults.Results } else { $null }
         $success = Invoke-KimiImplementation `
             -BeadId $Id `
             -BeadData $Data `
-            -LastFailureResults (if ($lastResults) { $lastResults.Results } else { $null }) `
+            -LastFailureResults $failureResults `
             -Iteration $iteration
         
         if (-not $success) {
@@ -385,17 +549,21 @@ function Start-RalphLoop {
         $lastResults = $verifyResult
         
         # Store results in bead
+        $failureSummary = ""
+        if (-not $verifyResult.AllPassed) { 
+            $failureSummary = ($verifyResult.Results | Where-Object { -not $_.Passed } | ForEach-Object { $_.Reason }) -join "; "
+        }
         Update-RalphMeta -Id $Id -Meta @{
             verifier_results = $verifyResult.Results
-            last_failure_summary = if ($verifyResult.AllPassed) { "" } else { 
-                ($verifyResult.Results | Where-Object { -not $_.Passed } | ForEach-Object { $_.Reason }) -join "; "
-            }
+            last_failure_summary = $failureSummary
         }
         
         # Step 3: Check if all passed
         if ($verifyResult.AllPassed) {
             Write-RalphLog "ALL VERIFIERS PASSED" "SUCCESS"
             Write-RalphLog "DoD satisfied after $iteration iteration(s)"
+            Update-BeadStatus -Id $Id -Status "completed"
+            Update-RalphMeta -Id $Id -Meta @{ status = "completed" }
             return @{
                 Success = $true
                 Iterations = $iteration
@@ -411,9 +579,15 @@ function Start-RalphLoop {
         $backoff = [Math]::Min($backoff * 2, 300)
     }
     
-    # Max iterations reached
+    # Max iterations reached - mark as failed
     Write-RalphLog "`n=== MAX ITERATIONS REACHED ===" "ERROR"
     Write-RalphLog "Failed to satisfy DoD after $maxIter iterations" "ERROR"
+    
+    Update-BeadStatus -Id $Id -Status "failed" -ErrorMessage "Max iterations reached"
+    Update-RalphMeta -Id $Id -Meta @{ 
+        status = "failed"
+        failure_reason = "Max iterations reached"
+    }
     
     return @{
         Success = $false
@@ -436,23 +610,14 @@ function Show-PrereqError {
 function Main {
     Write-RalphBanner
     
-    # Validate Kimi is available
+    # Validate Kimi is available (optional - system works without it in dry-run mode)
     $kimiPath = Get-Command kimi -ErrorAction SilentlyContinue
     if (-not $kimiPath) {
-        Write-RalphLog "Kimi CLI not found in PATH. Please install Kimi Code CLI." "ERROR"
-        Show-PrereqError
-        exit 1
+        Write-RalphLog "Kimi CLI not found in PATH. Will run in verification-only mode." "WARN"
     }
-    Write-RalphLog "Kimi found: $($kimiPath.Source)"
-    
-    # Validate bd is available
-    $bdPath = Get-Command bd -ErrorAction SilentlyContinue
-    if (-not $bdPath) {
-        Write-RalphLog "Beads CLI (bd) not found in PATH. Please install beads." "ERROR"
-        Show-PrereqError
-        exit 1
+    else {
+        Write-RalphLog "Kimi found: $($kimiPath.Source)"
     }
-    Write-RalphLog "Beads found: $($bdPath.Source)"
     
     # Load bead
     try {
@@ -478,7 +643,7 @@ function Main {
     
     # Setup evidence directory
     if (-not $EvidenceDir) {
-        $EvidenceDir = Join-Path ".ralph" "evidence" $BeadId
+        $EvidenceDir = Join-Path (Join-Path (Join-Path "." ".ralph") "evidence") $BeadId
     }
     New-Item -ItemType Directory -Force -Path $EvidenceDir | Out-Null
     Write-RalphLog "Evidence directory: $EvidenceDir"

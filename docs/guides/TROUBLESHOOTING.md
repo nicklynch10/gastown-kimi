@@ -1,0 +1,436 @@
+# Ralph-Gastown Troubleshooting Guide
+
+This guide addresses common issues encountered when setting up Ralph-Gastown.
+
+## Quick Diagnostics
+
+Run the diagnostic script first:
+
+```powershell
+.\scripts\ralph\ralph-prereq-check.ps1 -Verbose
+```
+
+---
+
+## PowerShell Issues
+
+### Special Character Parsing Errors
+
+**Error Messages:**
+```
+At ralph-master.ps1:89 char:76 - The '<' operator is reserved for future use
+At ralph-executor.ps1:205 char:70 - You must provide a value expression following the '%' operator
+```
+
+**Root Causes:**
+
+1. **Redirection Operator Confusion**: PowerShell interprets `<` and `>` as redirection operators
+2. **Format Operator Issues**: `%` is the format operator in PowerShell
+3. **Encoding Problems**: Files may have incorrect encoding
+
+**Solutions:**
+
+```powershell
+# 1. Check file encoding (should be UTF-8)
+$file = Get-Content "scripts\ralph\ralph-master.ps1" -Raw
+$bytes = [System.Text.Encoding]::UTF8.GetBytes($file)
+
+# 2. Fix line endings
+foreach ($file in Get-ChildItem scripts\ralph\*.ps1) {
+    $content = Get-Content $file.FullName -Raw
+    # Normalize line endings to CRLF
+    $content = $content -replace "`r?`n", "`r`n"
+    Set-Content $file.FullName $content -NoNewline
+}
+
+# 3. Verify scripts parse
+try {
+    $content = Get-Content "scripts\ralph\ralph-master.ps1" -Raw
+    [scriptblock]::Create($content) | Out-Null
+    Write-Host "Script parses correctly" -ForegroundColor Green
+} catch {
+    Write-Host "Parse error: $_" -ForegroundColor Red
+}
+```
+
+### Here-String Termination Issues
+
+**Error Message:**
+```
+Missing closing '}' in statement block
+```
+
+**Cause:** The closing `"@` must be at the **start of the line** with no whitespace before it.
+
+**Example of Bad Code:**
+```powershell
+$prompt = @"
+  Line 1
+  Line 2
+  "@  # WRONG - has whitespace before closing
+```
+
+**Example of Correct Code:**
+```powershell
+$prompt = @"
+  Line 1
+  Line 2
+"@  # CORRECT - no whitespace before closing
+```
+
+### Execution Policy Restrictions
+
+**Error Message:**
+```
+File cannot be loaded because running scripts is disabled on this system.
+```
+
+**Solutions:**
+
+```powershell
+# Option 1: Set for current user (recommended)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+
+# Option 2: Set for current process only
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+
+# Option 3: Bypass for single execution
+powershell -ExecutionPolicy Bypass -File script.ps1
+
+# Option 4: Unblock specific file
+Unblock-File -Path script.ps1
+```
+
+### Line Ending Issues (CRLF vs LF)
+
+**Symptoms:** Scripts fail to parse on Windows even though they look correct.
+
+**Diagnose:**
+```powershell
+$file = Get-Content "script.ps1" -Raw
+if ($file -match "`n" -and $file -notmatch "`r`n") {
+    Write-Host "File has Unix line endings (LF)" -ForegroundColor Yellow
+}
+```
+
+**Fix:**
+```powershell
+# Convert LF to CRLF
+$content = Get-Content "script.ps1" -Raw
+$content = $content -replace "(?<!`r)`n", "`r`n"
+Set-Content "script.ps1" $content -NoNewline
+
+# Or using Git
+git config core.autocrlf true
+git rm -rf --cached .
+git reset --hard HEAD
+```
+
+---
+
+## Dependency Issues
+
+### GT CLI Not Found
+
+**Error Message:**
+```
+The term 'gt' is not recognized as the name of a cmdlet
+```
+
+**Diagnose:**
+```powershell
+# Check if gt is installed
+Get-Command gt -ErrorAction SilentlyContinue
+
+# Check Go bin directory
+Test-Path "$env:USERPROFILE\go\bin\gt.exe"
+
+# Check PATH
+$env:PATH -split ";" | Select-String "go"
+```
+
+**Fix:**
+```powershell
+# Add Go bin to PATH for current session
+$env:PATH += ";$env:USERPROFILE\go\bin"
+
+# Add permanently
+$userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+if ($userPath -notlike "*go\bin*") {
+    [Environment]::SetEnvironmentVariable("PATH", "$userPath;$env:USERPROFILE\go\bin", "User")
+}
+
+# Restart PowerShell after changing PATH
+```
+
+### BD CLI Not Found
+
+Same solution as GT CLI (they install to the same location).
+
+### Kimi CLI Not Found
+
+**Error Message:**
+```
+The term 'kimi' is not recognized as the name of a cmdlet
+```
+
+**Diagnose:**
+```powershell
+# Check Python installation
+where python
+where python3
+where py
+
+# Check if kimi is installed
+python -m pip show kimi-cli
+pip show kimi-cli
+```
+
+**Fix:**
+```powershell
+# Find where pip installs scripts
+$pipLocation = python -m pip show kimi-cli | Select-String "Location"
+# Scripts are usually in Python's Scripts directory
+
+# Add Python Scripts to PATH
+$pythonScripts = python -c "import site; print(site.USER_BASE + '\\Scripts')"
+$env:PATH += ";$pythonScripts"
+
+# Or reinstall with full path
+python -m pip install --force-reinstall kimi-cli
+```
+
+### Windows Store Python Interference
+
+**Symptoms:** `python` command opens Microsoft Store instead of running Python.
+
+**Fix:**
+```powershell
+# Option 1: Disable app execution aliases
+# Settings > Apps > Advanced app settings > App execution aliases
+# Turn OFF "App Installer" for python.exe and python3.exe
+
+# Option 2: Use specific Python path
+& "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe" -m pip install kimi-cli
+
+# Option 3: Use py launcher
+py -m pip install kimi-cli
+py -m kimi --version
+```
+
+---
+
+## Path Handling Issues
+
+### Working Directory Confusion
+
+**Symptoms:** Scripts work when run from one directory but fail from another.
+
+**Fix in Scripts:**
+```powershell
+# Always set explicit paths at start of script
+$ScriptDir = $PSScriptRoot  # Directory where script is located
+$ProjectRoot = Resolve-Path "$ScriptDir\..\.."  # Adjust as needed
+
+# Or use absolute paths
+$BeadsDir = Join-Path $ProjectRoot ".beads"
+
+# Verify paths exist
+if (-not (Test-Path $BeadsDir)) {
+    throw "Beads directory not found: $BeadsDir"
+}
+```
+
+### Mixed Path Separators
+
+**Symptoms:** Paths like `C:\project/.beads/active` cause issues with some tools.
+
+**Fix:**
+```powershell
+# Normalize paths
+$path = Join-Path $ProjectRoot ".beads" "active"
+$normalized = [System.IO.Path]::GetFullPath($path)
+```
+
+---
+
+## Watchdog/Scheduler Issues
+
+### Scheduled Task Access Denied
+
+**Error Message:**
+```
+ERROR: Access is denied.
+```
+
+**Cause:** Creating scheduled tasks requires Administrator privileges.
+
+**Fix:**
+```powershell
+# Run PowerShell as Administrator
+# Right-click PowerShell icon -> Run as Administrator
+
+# Then run setup
+.\scripts\ralph\setup-watchdog.ps1
+```
+
+### Task Already Exists
+
+**Error Message:**
+```
+ERROR: The task name "RalphWatchdog" already exists.
+```
+
+**Fix:**
+```powershell
+# Remove existing task
+Unregister-ScheduledTask -TaskName "RalphWatchdog" -Confirm:$false
+
+# Then re-run setup
+.\scripts\ralph\setup-watchdog.ps1
+
+# Or use the manage script
+.\scripts\ralph\manage-watchdog.ps1 -Action restart
+```
+
+### Invalid Schedule Type
+
+**Error Message:**
+```
+ERROR: Invalid schedule type.
+```
+
+**Cause:** Different Windows versions have slightly different schtasks syntax.
+
+**Fix:** Use PowerShell cmdlets instead of schtasks.exe:
+```powershell
+# This is the modern approach (works on Win 10/11)
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-File script.ps1"
+$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
+$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+Register-ScheduledTask -TaskName "RalphWatchdog" -Action $Action -Trigger $Trigger -Settings $Settings -Force
+```
+
+---
+
+## Bead Schema Issues
+
+### Missing Required Fields
+
+**Error Message:**
+```
+Bead missing required field: intent
+Bead missing required field: dod.verifiers
+```
+
+**Fix:** Ensure your bead JSON includes:
+```json
+{
+  "intent": "What needs to be done",
+  "dod": {
+    "verifiers": [
+      {
+        "name": "Verifier name",
+        "command": "command to run",
+        "expect": { "exit_code": 0 }
+      }
+    ]
+  }
+}
+```
+
+### Formula vs Bead Confusion
+
+| Term | Description | Location | Format |
+|------|-------------|----------|--------|
+| Formula | Template for creating beads | `.beads/formulas/*.formula.toml` | TOML |
+| Bead | Instance of work | `.beads/active/*.json` or via `bd` | JSON |
+| Molecule | A formula with special properties | `.beads/formulas/mol-*.formula.toml` | TOML |
+
+---
+
+## Verification Issues
+
+### Verifier Timeouts
+
+**Symptoms:** Verifiers hang indefinitely.
+
+**Fix:** Always specify a timeout:
+```json
+{
+  "name": "Build project",
+  "command": "go build ./...",
+  "timeout_seconds": 120,
+  "expect": { "exit_code": 0 }
+}
+```
+
+### Verifier Exit Code Issues
+
+**Symptoms:** Verifier passes but Ralph reports failure.
+
+**Diagnose:**
+```powershell
+# Check what exit code the command actually returns
+$command = "npm test"
+Invoke-Expression $command
+$LASTEXITCODE  # This is what Ralph checks
+```
+
+**Fix:** Check the actual exit code and update your expect:
+```json
+{
+  "expect": { "exit_code": 0 }
+}
+```
+
+---
+
+## State Management Issues
+
+### Bead State Corruption
+
+**Symptoms:** Bead state is inconsistent or lost.
+
+**Fix:** The standalone executor now includes transaction safety:
+```powershell
+# Use the standalone executor with transaction support
+.\scripts\ralph\ralph-executor-standalone.ps1 -BeadFile my-bead.json -Standalone
+```
+
+### Lost Beads During Move
+
+**Symptoms:** Bead disappears when being moved between directories.
+
+**Cause:** Move operation was interrupted (crash, power loss, etc.).
+
+**Fix:** The new standalone executor uses atomic operations:
+1. Creates backup before move
+2. Performs move
+3. Removes backup on success
+4. Restores from backup on failure
+
+---
+
+## Getting More Help
+
+If issues persist:
+
+1. **Enable Verbose Logging:**
+   ```powershell
+   .\scripts\ralph\ralph-executor-standalone.ps1 -Verbose
+   ```
+
+2. **Check Logs:**
+   ```powershell
+   Get-Content .ralph/logs/ralph-$(Get-Date -Format 'yyyy-MM-dd').log -Tail 50
+   ```
+
+3. **Run Full Validation:**
+   ```powershell
+   .\scripts\ralph\ralph-validate.ps1 -Detailed
+   ```
+
+4. **Check GitHub Issues:**
+   - Gastown CLI: https://github.com/nicklynch10/gastown-cli
+   - Beads CLI: https://github.com/nicklynch10/beads-cli

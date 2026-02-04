@@ -2,7 +2,7 @@
 
 > **For AI Agents:** This file contains setup and development information for working with this codebase.
 
-## Quick Agent Setup (5 Minutes)
+## Quick Setup (5 Minutes)
 
 ### 1. Validate System Works
 
@@ -10,7 +10,7 @@
 # Run comprehensive test suite
 .\scripts\ralph\test\ralph-system-test.ps1 -TestType all
 
-# Expected: 48+ tests pass, 0 fail
+# Expected: 60+ tests pass, 0 fail
 ```
 
 ### 2. Run Live Tests
@@ -19,19 +19,10 @@
 # Tests actual operations (creates files, runs commands)
 .\scripts\ralph\test\ralph-live-test.ps1
 
-# Expected: 26/26 tests pass
+# Expected: 16+ tests pass
 ```
 
-### 3. Run Full Validation
-
-```powershell
-# Complete validation with 56 tests
-.\scripts\ralph\ralph-validate.ps1
-
-# Expected: 56/56 tests pass
-```
-
-### 4. You're Ready!
+### 3. You're Ready!
 
 If all tests pass, the system is operational.
 
@@ -47,62 +38,6 @@ This is **Gastown** with full **Ralph-Gastown integration** - a Windows-native A
 - **Kimi** = AI implementation (Kimi Code CLI)
 
 **The Rule:** Test failures stop progress. No green, no features.
-
----
-
-## Repository Structure
-
-```
-gastown-kimi/
-├── scripts/ralph/              # Core Ralph scripts
-│   ├── ralph-master.ps1        # Main control interface
-│   ├── ralph-executor.ps1      # Full-featured executor
-│   ├── ralph-executor-simple.ps1  # Lightweight executor
-│   ├── ralph-governor.ps1      # Policy enforcement
-│   ├── ralph-watchdog.ps1      # Always-on monitoring
-│   ├── ralph-setup.ps1         # One-command SDLC setup
-│   ├── ralph-validate.ps1      # E2E validation
-│   ├── ralph-browser.psm1      # Browser testing module
-│   ├── ralph-resilience.psm1   # Error handling module
-│   ├── setup-watchdog.ps1      # Watchdog installer
-│   ├── manage-watchdog.ps1     # Watchdog management
-│   └── test/
-│       ├── ralph-system-test.ps1
-│       ├── ralph-live-test.ps1
-│       └── ralph-comprehensive-test.ps1
-│
-├── .beads/
-│   ├── formulas/               # Ralph molecules
-│   │   ├── molecule-ralph-work.formula.toml
-│   │   ├── molecule-ralph-patrol.formula.toml
-│   │   └── molecule-ralph-gate.formula.toml
-│   └── schemas/
-│       └── ralph-bead.schema.json
-│
-├── examples/
-│   ├── ralph-demo/             # Calculator demo app
-│   │   ├── Calculator.psm1
-│   │   ├── test.ps1
-│   │   └── bead-gt-demo-calc-001.json
-│   └── taskmanager-app/        # Full Task Manager example
-│       ├── TaskManager.psm1
-│       ├── tests/
-│       └── beads/
-│
-├── docs/
-│   ├── guides/                 # User guides
-│   │   ├── QUICKSTART.md
-│   │   ├── SETUP.md
-│   │   └── QUICK_REFERENCE.md
-│   ├── reference/              # Technical docs
-│   │   ├── RALPH_INTEGRATION.md
-│   │   └── KIMI_INTEGRATION.md
-│   └── reports/                # Test reports
-│
-├── cmd/gt/                     # Gastown CLI (Go)
-├── internal/                   # Go internal packages
-└── tests/                      # Additional tests
-```
 
 ---
 
@@ -311,8 +246,7 @@ $result = Invoke-WithCircuitBreaker -Name "api" -ScriptBlock {
 |------|---------|---------|
 | System | `ralph-system-test.ps1` | Script parsing, compatibility |
 | Live | `ralph-live-test.ps1` | Real operations, file creation |
-| Comprehensive | `ralph-comprehensive-test.ps1` | Full test suite |
-| Validation | `ralph-validate.ps1` | E2E validation (56 tests) |
+| Validation | `ralph-validate.ps1` | E2E validation |
 
 ### Running Tests
 
@@ -322,9 +256,6 @@ $result = Invoke-WithCircuitBreaker -Name "api" -ScriptBlock {
 
 # Live tests (creates actual files)
 .\scripts\ralph\test\ralph-live-test.ps1 -Verbose
-
-# Comprehensive
-.\scripts\ralph\test\ralph-comprehensive-test.ps1
 
 # Full validation
 .\scripts\ralph\ralph-validate.ps1 -Detailed
@@ -447,14 +378,27 @@ Get-Content .\ralph\logs\watchdog.log -Tail 20
 
 ## External Dependencies
 
-**Optional but recommended:**
-- Gastown CLI (`gt`) - For full town management
-- Beads CLI (`bd`) - For bead operations
-- Kimi Code CLI (`kimi`) - For AI execution
-- Go - For building Gastown
-- Node.js - For browser testing
+**Required:**
+- PowerShell 5.1+ (built into Windows)
+- Git for Windows: `winget install Git.Git`
 
-**Core scripts work without these** - they'll skip features that need them.
+**Optional:**
+- Kimi Code CLI (`kimi`): `pip install kimi-cli`
+- Go 1.21+: `winget install GoLang.Go` (for building gt/bd CLIs)
+- Gastown CLI (`gt`): `go install github.com/nicklynch10/gastown-cli/cmd/gt@latest`
+- Beads CLI (`bd`): `go install github.com/nicklynch10/beads-cli/cmd/bd@latest`
+
+**Stand-alone Mode:**
+The `ralph-executor-standalone.ps1` can operate without gt/bd using local JSON files.
+
+---
+
+## Additional Documentation
+
+- [docs/guides/QUICKSTART.md](docs/guides/QUICKSTART.md) - Quick start guide
+- [docs/guides/SETUP.md](docs/guides/SETUP.md) - Detailed setup instructions
+- [docs/guides/TROUBLESHOOTING.md](docs/guides/TROUBLESHOOTING.md) - Common issues and fixes
+- [docs/reference/RALPH_INTEGRATION.md](docs/reference/RALPH_INTEGRATION.md) - Technical integration guide
 
 ---
 

@@ -1,0 +1,9 @@
+﻿{
+    "id":  "gt-gate-red-test",
+    "status":  "RED",
+    "blocks_convoy":  true,
+    "verifier_command":  "exit 1",
+    "type":  "gate",
+    "title":  "RED Gate - Blocking",
+    "gate_type":  "test"
+}

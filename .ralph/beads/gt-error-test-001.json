@@ -1,0 +1,33 @@
+﻿{
+    "id":  "gt-error-test-001",
+    "ralph_meta":  {
+                       "retry_backoff_seconds":  2,
+                       "last_attempt":  "2026-02-03T21:43:29.9430739-05:00",
+                       "attempt_count":  2,
+                       "status":  "failed",
+                       "failure_reason":  "Max iterations reached"
+                   },
+    "constraints":  {
+                        "time_budget_minutes":  2,
+                        "max_iterations":  2
+                    },
+    "type":  "task",
+    "intent":  "Test system behavior with errors",
+    "dod":  {
+                "evidence_required":  false,
+                "verifiers":  [
+                                  {
+                                      "timeout_seconds":  10,
+                                      "command":  "throw \u0027Intentional failure for testing\u0027",
+                                      "name":  "Will Fail",
+                                      "expect":  {
+                                                     "exit_code":  1
+                                                 }
+                                  }
+                              ]
+            },
+    "title":  "Error Recovery Test",
+    "last_error":  "Max iterations reached",
+    "status":  "failed",
+    "last_updated":  "2026-02-03T21:43:35.2358680-05:00"
+}

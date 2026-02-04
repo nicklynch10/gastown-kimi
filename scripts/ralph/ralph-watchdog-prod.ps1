@@ -76,6 +76,22 @@ param(
 
 $script:Version = "1.1.0-PROD"
 $script:StartTime = Get-Date
+
+# Determine project root (handle scheduled task context where $PWD may be wrong)
+$script:ProjectRoot = $null
+if ($PSScriptRoot) {
+    # Script is being run from its location
+    $script:ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+}
+else {
+    # Fallback to current directory
+    $script:ProjectRoot = $PWD
+}
+
+# Make LogPath absolute if relative
+if (-not [System.IO.Path]::IsPathRooted($LogPath)) {
+    $LogPath = Join-Path $script:ProjectRoot $LogPath
+}
 $script:Metrics = @{
     Runs = 0
     BeadsProcessed = 0
@@ -90,14 +106,29 @@ $script:Metrics = @{
 #region Logging
 
 function Initialize-LogDirectory {
-    $logDir = Join-Path $PWD $LogPath
+    # LogPath is already resolved to absolute in script initialization
+    $logDir = $LogPath
     $archiveDir = Join-Path $logDir "archive"
     
     if (-not (Test-Path $logDir)) {
-        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+        try {
+            New-Item -ItemType Directory -Path $logDir -Force -ErrorAction Stop | Out-Null
+        }
+        catch {
+            Write-Warning "Failed to create log directory '$logDir': $_"
+            # Fallback to temp directory
+            $logDir = Join-Path $env:TEMP "ralph-logs"
+            $archiveDir = Join-Path $logDir "archive"
+            New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+        }
     }
     if (-not (Test-Path $archiveDir)) {
-        New-Item -ItemType Directory -Path $archiveDir -Force | Out-Null
+        try {
+            New-Item -ItemType Directory -Path $archiveDir -Force -ErrorAction Stop | Out-Null
+        }
+        catch {
+            Write-Warning "Failed to create archive directory '$archiveDir': $_"
+        }
     }
     
     return $logDir
@@ -199,8 +230,12 @@ function Send-Alert {
     Write-ProdLog -Message "ALERT: $Subject" -Level "ERROR"
     $script:Metrics.AlertsSent++
     
-    # Write to alerts directory
-    $alertFile = Join-Path ".ralph/alerts" "alert-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
+    # Write to alerts directory (use absolute path)
+    $alertsDir = Join-Path $script:ProjectRoot ".ralph/alerts"
+    if (-not (Test-Path $alertsDir)) {
+        New-Item -ItemType Directory -Path $alertsDir -Force | Out-Null
+    }
+    $alertFile = Join-Path $alertsDir "alert-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
     $alert = @{
         timestamp = Get-Date -Format "o"
         severity = $Severity
@@ -305,7 +340,11 @@ function Send-WebhookAlert {
 #region Metrics
 
 function Save-Metrics {
-    $metricsFile = Join-Path ".ralph/metrics" "watchdog-metrics.json"
+    $metricsDir = Join-Path $script:ProjectRoot ".ralph/metrics"
+    if (-not (Test-Path $metricsDir)) {
+        New-Item -ItemType Directory -Path $metricsDir -Force | Out-Null
+    }
+    $metricsFile = Join-Path $metricsDir "watchdog-metrics.json"
     
     $data = @{
         timestamp = Get-Date -Format "o"
@@ -381,8 +420,12 @@ function Invoke-Nudge {
     }
     
     try {
-        # Create nudge file
-        $nudgeFile = Join-Path ".ralph/nudges" "$BeadId-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
+        # Create nudge file (use absolute path)
+        $nudgesDir = Join-Path $script:ProjectRoot ".ralph/nudges"
+        if (-not (Test-Path $nudgesDir)) {
+            New-Item -ItemType Directory -Path $nudgesDir -Force | Out-Null
+        }
+        $nudgeFile = Join-Path $nudgesDir "$BeadId-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
         @{
             bead_id = $BeadId
             timestamp = Get-Date -Format "o"
@@ -403,7 +446,8 @@ function Invoke-Nudge {
 function Invoke-Restart {
     param([string]$BeadId, [int]$RestartCount)
     
-    Write-ProdLog -Message "Restarting bead $BeadId (restart #$RestartCount)" -Level "WARN"
+    $restartMsg = 'Restarting bead {0} (restart #{1})' -f $BeadId, $RestartCount
+    Write-ProdLog -Message $restartMsg -Level "WARN"
     $script:Metrics.Restarts++
     
     if ($RestartCount -ge $MaxRestarts) {
@@ -503,11 +547,11 @@ if ($AlertWebhook) {
     Write-ProdLog -Message "Alert Webhook: Configured" -Level "INFO"
 }
 
-# Create required directories
+# Create required directories (use project root for absolute paths)
 Initialize-LogDirectory | Out-Null
-New-Item -ItemType Directory -Force -Path ".ralph/nudges" | Out-Null
-New-Item -ItemType Directory -Force -Path ".ralph/alerts" | Out-Null
-New-Item -ItemType Directory -Force -Path ".ralph/metrics" | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $script:ProjectRoot ".ralph/nudges") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $script:ProjectRoot ".ralph/alerts") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $script:ProjectRoot ".ralph/metrics") | Out-Null
 
 # Check Gastown CLI
 if (Test-GastownCLI) {

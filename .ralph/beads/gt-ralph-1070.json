@@ -1,0 +1,35 @@
+﻿{
+    "id":  "gt-ralph-1070",
+    "title":  "Production test bead",
+    "type":  "task",
+    "priority":  2,
+    "intent":  "Production test bead",
+    "dod":  {
+                "evidence_required":  false,
+                "verifiers":  [
+                                  {
+                                      "name":  "Basic check",
+                                      "command":  "Write-Output \u0027OK\u0027",
+                                      "timeout_seconds":  30,
+                                      "expect":  {
+                                                     "exit_code":  0,
+                                                     "stdout_contains":  "OK"
+                                                 }
+                                  }
+                              ]
+            },
+    "ralph_meta":  {
+                       "executor_version":  "ralph-v1",
+                       "last_attempt":  "2026-02-03T21:48:49.0491695-05:00",
+                       "attempt_count":  10,
+                       "status":  "failed",
+                       "failure_reason":  "Max iterations reached"
+                   },
+    "constraints":  {
+                        "max_iterations":  10,
+                        "time_budget_minutes":  60
+                    },
+    "status":  "failed",
+    "last_error":  "Max iterations reached",
+    "last_updated":  "2026-02-03T21:49:24.4016001-05:00"
+}

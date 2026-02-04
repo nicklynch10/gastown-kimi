@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Repository Cleanup (2026-02-03)
+
+Major repository cleanup in preparation for public release:
+
+#### Removed
+- **Archive cleanup**: Removed 1,389 duplicate/obsolete files from `archive/`
+  - Deleted `archive/gastown_repo/` (695 files - complete duplicate)
+  - Deleted `archive/temp_gastown/` (694 files - temporary files)
+- **Documentation consolidation**: Archived 45+ historical/specialized docs
+  - Moved original Gastown docs to `archive/docs/original-gastown/`
+  - Moved design/concept docs to `archive/docs/design-concepts/`
+  - Moved historical reports to `archive/docs/reports/`
+  - Moved specialized guides (24/7 setup, releasing) to `archive/docs/guides/`
+- **Script cleanup**: Archived 4 original Gastown bash scripts
+  - `browser-gate.sh`, `bump-version.sh`, `gen_hanoi.py`, `test-gce-install.sh`
+
+#### Changed
+- **Documentation reorganization**: Consolidated active docs to 8 essential files
+  - `docs/guides/QUICKSTART.md` - Main quick start
+  - `docs/guides/QUICK_REFERENCE.md` - Command reference (fixed incorrect URLs)
+  - `docs/guides/TROUBLESHOOTING.md` - Issue resolution
+  - `docs/guides/BROWSER_TESTING.md` - Browser testing
+  - `docs/reference/RALPH_INTEGRATION.md` - Technical architecture
+  - `docs/reference/BEAD_SCHEMA.md` - Bead schema
+  - `docs/reference/KIMI_INTEGRATION.md` - Kimi integration
+  - `docs/reports/CURRENT_VALIDATION_REPORT.md` - Current status
+- **Updated README.md**: Fixed documentation links
+
+#### Statistics
+- Before: ~2,516 total files
+- After: 748 active files + 71 archive files
+- Reduction: 70% fewer files in active codebase
+
 ## [0.5.0] - 2026-01-22
 
 ### Added

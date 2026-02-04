@@ -6,8 +6,8 @@ One-page reference for common tasks.
 
 ```powershell
 # Install prerequisites
-go install github.com/steveyegge/gastown/cmd/gt@latest
-go install github.com/steveyegge/beads/cmd/bd@latest
+go install github.com/nicklynch10/gastown-cli/cmd/gt@latest
+go install github.com/nicklynch10/beads-cli/cmd/bd@latest
 
 # Install Kimi from https://www.kimi.com/code
 
@@ -83,8 +83,8 @@ cd gastown-kimi
 
 | Problem | Solution |
 |---------|----------|
-| "gt not found" | `go install github.com/steveyegge/gastown/cmd/gt@latest` |
-| "bd not found" | `go install github.com/steveyegge/beads/cmd/bd@latest` |
+| "gt not found" | `go install github.com/nicklynch10/gastown-cli/cmd/gt@latest` |
+| "bd not found" | `go install github.com/nicklynch10/beads-cli/cmd/bd@latest` |
 | "cannot run scripts" | `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` |
 | "kimi not found" | Install from https://www.kimi.com/code |
 
