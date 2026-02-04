@@ -144,6 +144,42 @@ kimi --version
 2. Sign up and get an API key
 3. Configure Kimi: `kimi configure`
 
+**Create Config File (Alternative):**
+
+If `kimi configure` doesn't work, create the config file manually:
+
+```powershell
+# Create the config directory
+$configDir = "$env:USERPROFILE\.kimi"
+if (-not (Test-Path $configDir)) { 
+    New-Item -ItemType Directory -Path $configDir -Force 
+}
+
+# Create config.toml with your API key
+$config = @"
+# Kimi CLI Configuration
+api_key = "YOUR_API_KEY_HERE"
+api_endpoint = "https://api.moonshot.ai/v1"
+
+# Model configuration
+# NOTE: Quotes REQUIRED because kimi-k2.5 contains a dot
+[models."kimi-k2.5"]
+provider = "moonshot"
+model = "kimi-k2.5"
+max_context_size = 32768
+"@
+
+$config | Out-File -FilePath "$configDir\config.toml" -Encoding utf8
+Write-Host "Config created at: $configDir\config.toml" -ForegroundColor Green
+Write-Host "Edit the file and replace YOUR_API_KEY_HERE with your actual API key" -ForegroundColor Yellow
+```
+
+**⚠️ Important:** The model name `kimi-k2.5` contains a dot, so it **must be quoted** in TOML:
+- ✅ CORRECT: `[models."kimi-k2.5"]`
+- ❌ WRONG: `[models.kimi-k2.5]`
+
+**Having Kimi auth issues?** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#kimi-cli-configuration-issues) for detailed help.
+
 ---
 
 ## Quick Verification

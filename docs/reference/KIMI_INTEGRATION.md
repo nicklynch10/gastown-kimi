@@ -2,6 +2,58 @@
 
 This document describes the Kimi Code CLI (K2.5) integration with Gas Town.
 
+## Quick Setup for New Users
+
+**First time using Kimi?** Follow these steps to get authenticated and running:
+
+### 1. Install Kimi CLI
+
+```bash
+pip install kimi-cli
+```
+
+### 2. Configure API Key
+
+```bash
+# Run the configure command
+kimi configure
+
+# Or set environment variable directly
+export MOONSHOT_API_KEY="your-api-key-here"
+```
+
+**Get your API key:** https://www.kimi.com/code (sign up and generate an API key)
+
+### 3. Create TOML Config File
+
+Create `~/.kimi/config.toml` (Linux/Mac) or `%USERPROFILE%\.kimi\config.toml` (Windows):
+
+```toml
+# REQUIRED: Your API key
+api_key = "your-api-key-here"
+
+# REQUIRED: API endpoint
+api_endpoint = "https://api.moonshot.ai/v1"
+
+# RECOMMENDED: Default model
+# NOTE: Use quotes because "kimi-k2.5" contains a dot
+[models."kimi-k2.5"]
+provider = "moonshot"
+model = "kimi-k2.5"
+max_context_size = 32768
+```
+
+**⚠️ Important:** The model name `kimi-k2.5` contains a dot (`.`), so it **must be quoted** in TOML: `[models."kimi-k2.5"]` not `[models.kimi-k2.5]`
+
+### 4. Verify Installation
+
+```bash
+kimi --version
+kimi --help
+```
+
+---
+
 ## Overview
 
 Kimi Code CLI is now fully supported as a built-in agent preset in Gas Town. This integration allows you to use Kimi K2.5 as your AI coding agent alongside or instead of Claude, Gemini, Codex, and other supported agents.

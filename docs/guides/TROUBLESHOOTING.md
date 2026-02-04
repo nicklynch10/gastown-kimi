@@ -14,6 +14,49 @@ Run the diagnostic script first:
 
 ## Kimi CLI Configuration Issues
 
+### Kimi Authentication Errors
+
+**Error Message:**
+```
+Authentication failed: Invalid API key
+Unauthorized: 401
+```
+
+**Root Cause:** API key not configured or incorrect.
+
+**Fix:**
+
+```powershell
+# Option 1: Run Kimi's configure command
+kimi configure
+
+# Option 2: Set environment variable
+$env:MOONSHOT_API_KEY = "your-api-key-here"
+
+# Option 3: Create config file manually
+$config = @"
+# REQUIRED: Your API key
+api_key = "your-api-key-here"
+
+# REQUIRED: API endpoint
+api_endpoint = "https://api.moonshot.ai/v1"
+
+# Model configuration (note the quotes around kimi-k2.5)
+[models."kimi-k2.5"]
+provider = "moonshot"
+model = "kimi-k2.5"
+max_context_size = 32768
+"@
+
+$configDir = "$env:USERPROFILE\.kimi"
+if (-not (Test-Path $configDir)) { New-Item -ItemType Directory -Path $configDir }
+$config | Out-File -FilePath "$configDir\config.toml" -Encoding utf8
+```
+
+**Get your API key:** https://www.kimi.com/code
+
+---
+
 ### TOML Model Names with Dots
 
 **Error Message:**
