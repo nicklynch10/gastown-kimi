@@ -90,6 +90,42 @@ Detailed technical documentation for the Ralph-Gastown integration.
 
 ## Ralph Bead Contract
 
+### Standalone Mode (No BD CLI Required)
+
+Ralph can operate without the `bd` CLI in **standalone mode**. This is the recommended approach for most users.
+
+**In standalone mode:**
+- Beads are stored as JSON files in `.ralph/beads/*.json`
+- Gates are stored in `.ralph/gates/*.json`
+- Evidence is collected in `.ralph/evidence/`
+- The `bd` CLI is optional; only `gt` CLI is required
+
+**Creating beads in standalone mode:**
+```powershell
+# Use ralph-master to create beads
+.\scripts\ralph\ralph-master.ps1 -Command create-bead -Intent "Your task description"
+
+# Or create JSON files manually following the schema below
+```
+
+**Formula Directory Structure:**
+
+Formulas must be located in `.beads/formulas/` subdirectory (not flat in `.beads/`):
+
+```
+.beads/
+├── formulas/                          # Correct location
+│   ├── molecule-ralph-work.formula.toml
+│   ├── molecule-ralph-patrol.formula.toml
+│   ├── molecule-ralph-gate.formula.toml
+│   └── mol-*.formula.toml
+├── schemas/
+│   └── ralph-bead.schema.json
+└── config.yaml
+```
+
+The setup scripts (`ralph-setup.ps1`, `ralph-master.ps1 -Command init`) create this structure automatically.
+
 ### Schema
 
 ```json

@@ -445,14 +445,42 @@ Get-Content .\ralph\logs\watchdog.log -Tail 20
 - PowerShell 5.1+ (built into Windows)
 - Git for Windows: `winget install Git.Git`
 
-**Optional:**
-- Kimi Code CLI (`kimi`): `pip install kimi-cli`
-- Go 1.21+: `winget install GoLang.Go` (for building gt/bd CLIs)
+**Required for Full Mode:**
+- Go 1.21+: `winget install GoLang.Go`
 - Gastown CLI (`gt`): `go install github.com/nicklynch10/gastown-cli/cmd/gt@latest`
-- Beads CLI (`bd`): Not available - use standalone mode (JSON files)
 
-**Stand-alone Mode:**
-The `ralph-executor-standalone.ps1` can operate without gt/bd using local JSON files.
+**Optional:**
+- Kimi Code CLI (`kimi`): `pip install kimi-cli` or `uv tool install kimi-cli`
+- Beads CLI (`bd`): `go install github.com/nicklynch10/beads-cli/cmd/bd@latest` (optional - see below)
+
+**About Standalone Mode:**
+
+Ralph works in **standalone mode** without the `bd` CLI. In this mode:
+- Beads are stored as JSON files in `.ralph/beads/*.json`
+- The `gt` CLI is still required for core functionality
+- Formulas are loaded from `.beads/formulas/*.formula.toml`
+
+**Formula Directory Structure:**
+```
+.beads/
+├── formulas/           # Formulas MUST be in this subdirectory
+│   ├── molecule-ralph-work.formula.toml
+│   ├── molecule-ralph-patrol.formula.toml
+│   └── molecule-ralph-gate.formula.toml
+├── schemas/
+│   └── ralph-bead.schema.json
+└── config.yaml
+```
+
+The `ralph-master.ps1 -Command init` and `ralph-setup.ps1` scripts automatically create this structure correctly.
+
+**Verify Formula Location:**
+```powershell
+# Should show formulas in subdirectory, not flat in .beads/
+Get-ChildItem .beads/formulas/*.formula.toml
+
+# Should output 3+ formula files
+```
 
 ---
 

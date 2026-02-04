@@ -188,6 +188,20 @@ A **bead** represents a unit of work with a clear Definition of Done (DoD). Bead
 }
 ```
 
+**Note on Windows Paths:** In PowerShell, forward slashes (`/`) in commands work correctly and are preferred to avoid JSON escaping issues. If you must use backslashes, remember to escape them in JSON:
+
+```json
+// ✅ Preferred: Use forward slashes
+{
+  "command": "examples/ralph-demo/test.ps1"
+}
+
+// ⚠️ Alternative: Escape backslashes in JSON
+{
+  "command": "examples\\ralph-demo\\test.ps1"
+}
+```
+
 ### Gate Bead
 
 ```json

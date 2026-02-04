@@ -22,9 +22,13 @@ Authentication failed: Invalid API key
 Unauthorized: 401
 ```
 
-**Root Cause:** API key not configured or incorrect.
+**Root Causes & Fixes:**
 
-**Fix:**
+1. **Wrong API Key Source:**
+   - Get key from: https://platform.moonshot.ai/ (not www.kimi.com)
+   - Generate a new API key from the platform dashboard
+
+2. **Missing or Incorrect Config:**
 
 ```powershell
 # Option 1: Run Kimi's configure command
@@ -33,27 +37,40 @@ kimi configure
 # Option 2: Set environment variable
 $env:MOONSHOT_API_KEY = "your-api-key-here"
 
-# Option 3: Create config file manually
+# Option 3: Create config file manually (most reliable)
 $config = @"
-# REQUIRED: Your API key
-api_key = "your-api-key-here"
+default_model = "kimi-k2.5"
 
-# REQUIRED: API endpoint
+# REQUIRED: Your API key from platform.moonshot.ai
+api_key = "YOUR_API_KEY_HERE"
+
+# REQUIRED: API endpoint (use moonshot.ai, not kimi.com)
 api_endpoint = "https://api.moonshot.ai/v1"
 
-# Model configuration (note the quotes around kimi-k2.5)
+# Provider configuration
+[providers.moonshot]
+type = "moonshot"
+base_url = "https://api.moonshot.ai/v1"
+api_key = "YOUR_API_KEY_HERE"
+
+# ⚠️ CRITICAL: Quotes REQUIRED for model names with dots
 [models."kimi-k2.5"]
 provider = "moonshot"
 model = "kimi-k2.5"
-max_context_size = 32768
+max_context_size = 262144
 "@
 
 $configDir = "$env:USERPROFILE\.kimi"
-if (-not (Test-Path $configDir)) { New-Item -ItemType Directory -Path $configDir }
+if (-not (Test-Path $configDir)) { New-Item -ItemType Directory -Path $configDir -Force }
 $config | Out-File -FilePath "$configDir\config.toml" -Encoding utf8
+Write-Host "Config created. Edit and add your API key from platform.moonshot.ai" -ForegroundColor Yellow
 ```
 
-**Get your API key:** https://www.kimi.com/code
+**Verification:**
+```powershell
+# Test the configuration
+kimi --yolo --prompt "Hello, verify you are working"
+```
 
 ---
 
@@ -69,19 +86,49 @@ models.kimi-k2.max_context_size Field required
 
 **Root Cause:** The TOML parser interprets `kimi-k2.5` as a nested table structure `kimi-k2` with key `5`.
 
-**Fix:** Quote model names containing dots in your Kimi CLI config:
+**How TOML Parsing Works:**
+```toml
+# This TOML:
+[models.kimi-k2.5]
+provider = "moonshot"
+
+# Is parsed as equivalent to:
+[models.kimi-k2]
+5 = null
+provider = "moonshot"
+```
+
+**Fix:** Always quote model names containing dots:
 
 ```toml
-# WRONG:
+# ❌ WRONG - TOML parses as nested table:
 [models.kimi-k2.5]
 provider = "moonshot"
 model = "kimi-k2.5"
 
-# CORRECT:
+# ✅ CORRECT - TOML parses as single table name:
 [models."kimi-k2.5"]
 provider = "moonshot"
 model = "kimi-k2.5"
-max_context_size = 32768
+max_context_size = 262144
+```
+
+**Complete Working Example:**
+```toml
+# %USERPROFILE%\.kimi\config.toml
+default_model = "kimi-k2.5"
+api_key = "sk-your-api-key-here"
+api_endpoint = "https://api.moonshot.ai/v1"
+
+[providers.moonshot]
+type = "moonshot"
+base_url = "https://api.moonshot.ai/v1"
+api_key = "sk-your-api-key-here"
+
+[models."kimi-k2.5"]
+provider = "moonshot"
+model = "kimi-k2.5"
+max_context_size = 262144
 ```
 
 **Location:** `~/.kimi/config.toml` or `%USERPROFILE%\.kimi\config.toml`

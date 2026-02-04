@@ -140,8 +140,8 @@ kimi --version
 ```
 
 **Get API Key:**
-1. Visit https://www.kimi.com/code
-2. Sign up and get an API key
+1. Visit https://platform.moonshot.ai/
+2. Sign up and generate an API key
 3. Configure Kimi: `kimi configure`
 
 **Create Config File (Alternative):**
@@ -158,25 +158,55 @@ if (-not (Test-Path $configDir)) {
 # Create config.toml with your API key
 $config = @"
 # Kimi CLI Configuration
+default_model = "kimi-k2.5"
+
+# REQUIRED: Your API key from platform.moonshot.ai
 api_key = "YOUR_API_KEY_HERE"
+
+# REQUIRED: API endpoint
 api_endpoint = "https://api.moonshot.ai/v1"
 
+# Provider configuration
+[providers.moonshot]
+type = "moonshot"
+base_url = "https://api.moonshot.ai/v1"
+api_key = "YOUR_API_KEY_HERE"
+
 # Model configuration
-# NOTE: Quotes REQUIRED because kimi-k2.5 contains a dot
+# ⚠️ CRITICAL: Quotes REQUIRED because kimi-k2.5 contains a dot
+# Without quotes, TOML parses this as [models.kimi-k2][5] which is WRONG
 [models."kimi-k2.5"]
 provider = "moonshot"
 model = "kimi-k2.5"
-max_context_size = 32768
+max_context_size = 262144
 "@
 
 $config | Out-File -FilePath "$configDir\config.toml" -Encoding utf8
 Write-Host "Config created at: $configDir\config.toml" -ForegroundColor Green
-Write-Host "Edit the file and replace YOUR_API_KEY_HERE with your actual API key" -ForegroundColor Yellow
+Write-Host "Edit the file and replace YOUR_API_KEY_HERE with your actual API key from platform.moonshot.ai" -ForegroundColor Yellow
 ```
 
-**⚠️ Important:** The model name `kimi-k2.5` contains a dot, so it **must be quoted** in TOML:
-- ✅ CORRECT: `[models."kimi-k2.5"]`
-- ❌ WRONG: `[models.kimi-k2.5]`
+**⚠️ CRITICAL - TOML Syntax for Model Names:**
+
+The model name `kimi-k2.5` contains a dot (`.`), so it **MUST be quoted** in TOML:
+
+| Syntax | Result | Status |
+|--------|--------|--------|
+| `[models."kimi-k2.5"]` | Correctly creates table for `kimi-k2.5` | ✅ CORRECT |
+| `[models.kimi-k2.5]` | TOML parses as `models.kimi-k2` + key `5` | ❌ WRONG |
+
+**Why this matters:** TOML interprets unquoted dots as table separators. Without quotes, the parser creates a nested table `kimi-k2` with a numeric key `5`, causing authentication/model errors.
+
+**Verify your config:**
+```powershell
+# Test Kimi is working
+kimi --yolo --prompt "Hello"
+
+# If you get authentication errors, check:
+# 1. API key is correct from platform.moonshot.ai (not www.kimi.com)
+# 2. Model name is quoted in [models."kimi-k2.5"]
+# 3. api_endpoint is https://api.moonshot.ai/v1
+```
 
 **Having Kimi auth issues?** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#kimi-cli-configuration-issues) for detailed help.
 
