@@ -201,7 +201,9 @@ Write-TestHeader "TEST 3: Real Verifier Execution"
 Run-Test "Verifier 1: Directory exists" {
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = "powershell.exe"
-    $psi.Arguments = "-NoProfile -Command `"Test-Path '$TestDir'`""
+    # Use double quotes and escape properly for variable expansion
+    $command = "Test-Path `"$TestDir`""
+    $psi.Arguments = "-NoProfile -Command `"$command`""
     $psi.RedirectStandardOutput = $true
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true

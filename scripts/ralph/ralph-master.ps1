@@ -98,7 +98,10 @@ function Test-Prerequisites {
         PowerShell = $PSVersionTable.PSVersion -ge [Version]"5.1"
         Git = (Get-Command git -ErrorAction SilentlyContinue) -ne $null
         Kimi = (Get-Command kimi -ErrorAction SilentlyContinue) -ne $null
-        Gastown = (Get-Command gt -ErrorAction SilentlyContinue) -ne $null
+        # On Windows, look for gt.exe; on Linux/Mac, look for gt
+$gtCommand = if ($env:OS -eq "Windows_NT") { "gt.exe" } else { "gt" }
+$script:GastownCmd = $gtCommand
+$prereqs.Gastown = (Get-Command $gtCommand -ErrorAction SilentlyContinue) -ne $null
         Beads = (Get-Command bd -ErrorAction SilentlyContinue) -ne $null
     }
     
@@ -202,7 +205,12 @@ function Invoke-InitCommand {
     
     $allOk = $true
     foreach ($tool in $requiredTools) {
-        $found = Get-Command $tool.Name -ErrorAction SilentlyContinue
+        # On Windows, append .exe to tool names if not already present
+$toolName = $tool.Name
+if ($env:OS -eq "Windows_NT" -and -not $toolName.EndsWith(".exe")) {
+    $toolName = "$toolName.exe"
+}
+$found = Get-Command $toolName -ErrorAction SilentlyContinue
         if ($found) {
             Write-Status "$($tool.Name): OK" "OK"
         }
@@ -372,7 +380,8 @@ function Invoke-StatusCommand {
     
     # Check Gastown status
     Write-Status "Gastown Status:" "STEP"
-    $gtPath = Get-Command gt -ErrorAction SilentlyContinue
+    $gtCmd = if ($env:OS -eq "Windows_NT") { "gt.exe" } else { "gt" }
+$gtPath = Get-Command $gtCmd -ErrorAction SilentlyContinue
     if ($gtPath) {
         $gtVersion = & gt version 2>&1
         Write-Status "  Version: $gtVersion" "INFO"
@@ -571,49 +580,63 @@ function Invoke-CreateBeadCommand {
     
     Write-Status "Creating Ralph bead..." "STEP"
     
-    # Create bead with Ralph contract
-    $beadDesc = @"
-Intent: $BeadIntent
-
-## Definition of Done
-- Implementation satisfies intent
-- All verifiers pass
-- Evidence attached
-
-## Ralph Meta
-{"attempt_count":0,"executor_version":"ralph-v1"}
-
-## Constraints
-max_iterations: 10
-time_budget_minutes: 60
-"@
-    # Create bead file directly since bd CLI may not have create command
+    # Create bead with proper Ralph contract structure
     $beadId = "gt-ralph-$(Get-Random -Minimum 1000 -Maximum 9999)"
-    $beadFile = @"
-{
-    "id": "$beadId",
-    "title": "$BeadIntent",
-    "type": "task",
-    "priority": 2,
-    "description": "$($beadDesc -replace '"', '\"')",
-    "ralph_meta": {
-        "attempt_count": 0,
-        "executor_version": "ralph-v1"
+    
+    # Build the bead as a PowerShell object first (ensures valid JSON structure)
+    $bead = @{
+        id = $beadId
+        title = $BeadIntent
+        type = "task"
+        priority = 2
+        intent = $BeadIntent
+        description = "Ralph-managed bead with DoD enforcement"
+        dod = @{
+            verifiers = @(
+                @{
+                    name = "Build succeeds"
+                    command = "go build ./..."
+                    expect = @{ exit_code = 0 }
+                    timeout_seconds = 60
+                },
+                @{
+                    name = "Tests pass"
+                    command = "go test ./..."
+                    expect = @{ exit_code = 0 }
+                    timeout_seconds = 120
+                }
+            )
+            evidence_required = $true
+        }
+        constraints = @{
+            max_iterations = 10
+            time_budget_minutes = 60
+        }
+        lane = "feature"
+        ralph_meta = @{
+            attempt_count = 0
+            executor_version = "ralph-v1"
+            created_at = (Get-Date -Format "o")
+        }
     }
-}
-"@
+    
     $beadPath = ".ralph/beads/$beadId.json"
     if (-not (Test-Path ".ralph/beads")) {
         New-Item -ItemType Directory -Force -Path ".ralph/beads" | Out-Null
     }
-    $beadFile | Out-File -FilePath $beadPath -Encoding utf8
+    
+    # Convert to JSON with proper depth to preserve nested structures
+    $bead | ConvertTo-Json -Depth 10 | Out-File -FilePath $beadPath -Encoding utf8
     
     Write-Status "Created bead: $beadId" "OK"
     Write-Status "Bead file: $beadPath" "INFO"
+    Write-Status "Verifiers: $($bead.dod.verifiers.Count) default verifiers configured" "INFO"
+    Write-Status "Edit $beadPath to customize verifiers for your specific task" "INFO"
     
+    $gtCmd = if ($env:OS -eq "Windows_NT") { "gt.exe" } else { "gt" }
     if ($TargetRig) {
         Write-Status "Slinging to $TargetRig..." "STEP"
-        & gt sling $beadId $TargetRig
+        & $gtCmd sling $beadId $TargetRig
     }
     else {
         Write-Status "Bead ready. Sling with: gt sling $beadId <rig>" "INFO"
@@ -664,9 +687,10 @@ function Invoke-CreateGateCommand {
     Write-Status "Created gate: $gateId" "OK"
     Write-Status "Gate file: $gatePath" "INFO"
     
+    $gtCmd = if ($env:OS -eq "Windows_NT") { "gt.exe" } else { "gt" }
     if ($TargetConvoy) {
         Write-Status "Adding to convoy $TargetConvoy..." "STEP"
-        & gt convoy add $TargetConvoy $gateId
+        & $gtCmd convoy add $TargetConvoy $gateId
     }
 }
 

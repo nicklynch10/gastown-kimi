@@ -58,6 +58,41 @@ This is **Gastown** with full **Ralph-Gastown integration** - a Windows-native A
 
 ---
 
+## Critical Configuration Notes
+
+### Kimi CLI Configuration (Windows)
+
+When creating the Kimi config file on Windows, use **BOM-free UTF-8 encoding**:
+
+```powershell
+# CORRECT - No BOM (required for TOML parsing)
+[System.IO.File]::WriteAllText("$configDir\config.toml", $config, [System.Text.UTF8Encoding]::new($false))
+
+# WRONG - PowerShell 5.1 Out-File writes UTF-8-BOM which breaks TOML parsing
+$config | Out-File -FilePath "$configDir\config.toml" -Encoding utf8
+```
+
+**Provider type must be "kimi" (not "moonshot"):**
+```toml
+[providers.moonshot]
+type = "kimi"  # NOT "moonshot" - this is the provider implementation type
+base_url = "https://api.moonshot.ai/v1"
+api_key = "YOUR_API_KEY"
+```
+
+### Standalone Mode (No bd CLI Required)
+
+Ralph works **without** the `bd` (Beads) CLI:
+- Beads stored as JSON files in `.ralph/beads/*.json`
+- Automatic fallback when `bd` is not installed
+- Full Ralph functionality available in standalone mode
+
+**You only need `bd` if:**
+- You want database backend instead of JSON files
+- You need advanced bead querying
+
+---
+
 ## PowerShell 5.1 Compatibility
 
 **CRITICAL:** All scripts must be compatible with PowerShell 5.1 (Windows built-in).
@@ -112,6 +147,29 @@ kimi --yolo -p $promptContent
 $promptContent | Out-File $tempFile -Encoding utf8
 Start-Process -FilePath "kimi" -ArgumentList @("--yolo", "--print") -RedirectStandardInput $tempFile -Wait -PassThru -NoNewWindow
 ```
+
+---
+
+## Windows-Specific Notes
+
+### About tmux
+
+**Ralph-Gastown is pure PowerShell** and does NOT require tmux. Only `gt mayor` commands (session management) use tmux.
+
+**For Ralph-only workflows:** No tmux needed.
+
+### SQLite3 (Optional)
+
+SQLite3 is used by `gt doctor` for diagnostics. Core Ralph functionality works without it.
+
+Install if desired:
+```powershell
+winget install SQLite.SQLite
+```
+
+### gt.exe Detection
+
+On Windows, scripts automatically look for `gt.exe` (not just `gt`). Ensure your `gt.exe` is in PATH or current directory.
 
 ---
 

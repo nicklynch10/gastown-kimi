@@ -23,6 +23,43 @@ This guide covers everything you need to install before using Ralph-Gastown.
 
 ---
 
+## Windows-Specific Prerequisites
+
+### SQLite3 (Required for `gt doctor`)
+
+The Gastown CLI's `gt doctor` command checks for SQLite3. While not strictly required for Ralph operation, installing it prevents warnings:
+
+**Option A: Using winget (recommended)**
+```powershell
+winget install SQLite.SQLite
+```
+
+**Option B: Manual download**
+1. Download from https://sqlite.org/download.html
+2. Download the **Precompiled Binaries for Windows** (sqlite-tools-win32-x86-*.zip)
+3. Extract to `C:\sqlite` or add to PATH
+
+**Verify installation:**
+```powershell
+sqlite3 --version
+```
+
+### About tmux Dependency
+
+**Clarification:** Ralph-Gastown itself is **pure PowerShell** and does NOT require tmux. However:
+
+- `gt mayor` commands (session management, daemon) use tmux
+- Ralph executor and core workflows work **without tmux**
+- If you need `gt mayor` features, install tmux:
+  ```powershell
+  winget install tmux
+  # Or use MSYS2: pacman -S tmux
+  ```
+
+**For Ralph-only workflows:** No tmux needed. Ralph works entirely in PowerShell.
+
+---
+
 ## Step-by-Step Installation
 
 ### 1. Verify Windows & PowerShell
@@ -114,6 +151,19 @@ go build -ldflags "$LDFLAGS" -o gt.exe ./cmd/gt
 
 **Note:** If the version shows an error, the binary was built without proper version flags. Use the build script above.
 
+#### gt init vs gt install Clarification
+
+**`gt init`** - Creates a basic workspace structure (mayors/, crews/, etc.)  
+**`gt install`** - Full setup including formulas, schemas, and town configuration
+
+**For Ralph-Gastown:** The Ralph setup scripts handle the full initialization. You typically don't need to run `gt init` or `gt install` manually - the Ralph master script sets up what's needed.
+
+```powershell
+# After building gt.exe, just run Ralph initialization
+# This handles all necessary Gastown setup
+.\scripts\ralph\ralph-master.ps1 -Command init
+```
+
 ---
 
 ### 5. Configure PowerShell Execution Policy
@@ -183,7 +233,8 @@ api_endpoint = "https://api.moonshot.ai/v1"
 
 # Provider configuration
 [providers.moonshot]
-type = "moonshot"
+# ⚠️ CRITICAL: type must be "kimi" (not "moonshot") - this is the provider implementation type
+type = "kimi"
 base_url = "https://api.moonshot.ai/v1"
 api_key = "YOUR_API_KEY_HERE"
 
@@ -196,7 +247,8 @@ model = "kimi-k2.5"
 max_context_size = 262144
 "@
 
-$config | Out-File -FilePath "$configDir\config.toml" -Encoding utf8
+# Write without BOM (PowerShell 5.1 Out-File writes UTF-8-BOM which breaks TOML parsing)
+[System.IO.File]::WriteAllText("$configDir\config.toml", $config, [System.Text.UTF8Encoding]::new($false))
 Write-Host "Config created at: $configDir\config.toml" -ForegroundColor Green
 Write-Host "Edit the file and replace YOUR_API_KEY_HERE with your actual API key from platform.moonshot.ai" -ForegroundColor Yellow
 ```
@@ -224,6 +276,29 @@ kimi --yolo --prompt "Hello"
 ```
 
 **Having Kimi auth issues?** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#kimi-cli-configuration-issues) for detailed help.
+
+---
+
+### 7. Optional: Beads CLI (bd)
+
+**IMPORTANT:** Ralph works in **standalone mode** without the `bd` CLI. In standalone mode:
+- Beads are stored as JSON files in `.ralph/beads/*.json`
+- The `gt` CLI is still required for core functionality
+- Formulas are loaded from `.beads/formulas/*.formula.toml`
+
+**You only need `bd` CLI if:**
+- You want to use the Beads database backend instead of JSON files
+- You need advanced bead querying capabilities
+
+**To install (optional):**
+```powershell
+go install github.com/nicklynch10/beads-cli/cmd/bd@latest
+```
+
+**Ralph will automatically:**
+- Use `bd` CLI if available
+- Fall back to JSON file mode if `bd` is not installed
+- Work seamlessly in either mode
 
 ---
 

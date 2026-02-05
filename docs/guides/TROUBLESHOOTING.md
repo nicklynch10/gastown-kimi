@@ -49,7 +49,8 @@ api_endpoint = "https://api.moonshot.ai/v1"
 
 # Provider configuration
 [providers.moonshot]
-type = "moonshot"
+# ⚠️ CRITICAL: type must be "kimi" (not "moonshot") - this is the provider implementation type
+type = "kimi"
 base_url = "https://api.moonshot.ai/v1"
 api_key = "YOUR_API_KEY_HERE"
 
@@ -62,7 +63,8 @@ max_context_size = 262144
 
 $configDir = "$env:USERPROFILE\.kimi"
 if (-not (Test-Path $configDir)) { New-Item -ItemType Directory -Path $configDir -Force }
-$config | Out-File -FilePath "$configDir\config.toml" -Encoding utf8
+# Write without BOM (PowerShell 5.1 Out-File writes UTF-8-BOM which breaks TOML parsing)
+[System.IO.File]::WriteAllText("$configDir\config.toml", $config, [System.Text.UTF8Encoding]::new($false))
 Write-Host "Config created. Edit and add your API key from platform.moonshot.ai" -ForegroundColor Yellow
 ```
 
@@ -289,6 +291,32 @@ go build -ldflags "-X github.com/steveyegge/gastown/internal/cmd.Version=$env:VE
 
 ## Dependency Issues
 
+### SQLite3 Not Found (Windows)
+
+**Error Message:**
+```
+gt doctor: SQLite3 CLI not found
+```
+
+**Note:** SQLite3 is used by `gt doctor` for diagnostics. Ralph-Gastown core functionality works without it.
+
+**Fix:**
+```powershell
+# Option 1: Using winget (recommended)
+winget install SQLite.SQLite
+
+# Option 2: Manual install
+# 1. Download from https://sqlite.org/download.html
+# 2. Download sqlite-tools-win32-x86-*.zip
+# 3. Extract to C:\sqlite
+# 4. Add C:\sqlite to PATH
+
+# Verify
+sqlite3 --version
+```
+
+---
+
 ### GT CLI Not Found
 
 **Error Message:**
@@ -324,7 +352,14 @@ if ($userPath -notlike "*go\bin*") {
 
 ### BD CLI Not Found
 
-Same solution as GT CLI (they install to the same location).
+**Note:** Ralph works in **standalone mode** without `bd` CLI. If you see this warning but Ralph is functioning (creating beads, running executors), you can ignore it.
+
+**If you need `bd` CLI:** Same solution as GT CLI (they install to the same location via `go install`).
+
+**Standalone Mode (No `bd` required):**
+- Beads stored as JSON in `.ralph/beads/*.json`
+- All Ralph features work without `bd`
+- Automatic fallback when `bd` is not available
 
 ### Kimi CLI Not Found
 

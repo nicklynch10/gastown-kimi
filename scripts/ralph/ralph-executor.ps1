@@ -41,7 +41,7 @@ param(
     [int]$MaxIterations = 10,
 
     [Parameter()]
-    [string]$KimiArgs = "--yolo",
+    [string]$KimiArgs = "--yolo --print",
 
     [Parameter()]
     [string]$EvidenceDir = "",
@@ -57,7 +57,9 @@ $ErrorActionPreference = "Continue"
 
 $RALPH_VERSION = "1.1.0"
 $DEFAULT_BACKOFF_SECONDS = 30
-$LogDir = Join-Path ".ralph" "logs"
+# Resolve paths relative to script location (handles being called from any directory)
+$ScriptRoot = Split-Path -Parent $PSScriptRoot  # Go up from scripts/ralph to project root
+$LogDir = Join-Path (Join-Path $ScriptRoot ".ralph") "logs"
 $LogFile = Join-Path $LogDir "executor-$(Get-Date -Format 'yyyyMMdd').log"
 
 #endregion
