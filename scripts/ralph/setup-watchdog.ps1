@@ -115,11 +115,12 @@ function Install-Watchdog {
             -RepetitionDuration (New-TimeSpan -Days 3650)
         
         # Settings: Run even on battery, don't stop, start when available
+        # Note: -RunOnlyIfNetworkAvailable is a switch (flag), not a boolean parameter.
+        # In PowerShell 5.1, switches cannot be set to $false - they are either present ($true) or omitted ($false).
         $Settings = New-ScheduledTaskSettingsSet `
             -AllowStartIfOnBatteries `
             -DontStopIfGoingOnBatteries `
-            -StartWhenAvailable `
-            -RunOnlyIfNetworkAvailable $false
+            -StartWhenAvailable
         
         # Principal: Run as current user with highest privileges
         $Principal = New-ScheduledTaskPrincipal `

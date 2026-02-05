@@ -543,6 +543,234 @@ Bead missing required field: dod.verifiers
 
 ---
 
+## Process Management Issues
+
+### Server Processes Left Running (Port Conflicts)
+
+**Symptoms:** 
+- "Unable to connect" errors in verifiers
+- Port 3000 (or other) already in use
+- Multiple Node.js processes running from previous tests
+
+**Diagnose:**
+```powershell
+# Find processes using port 3000
+netstat -ano | findstr :3000
+
+# List Node.js processes
+Get-Process node -ErrorAction SilentlyContinue
+```
+
+**Fix - Immediate:**
+```powershell
+# Kill specific process by PID
+taskkill /F /PID <PID>
+
+# Kill all Node.js processes (use with caution)
+Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+```
+
+**Fix - Proper Process Lifecycle (Recommended):**
+When starting servers in verifiers, always ensure cleanup:
+
+```powershell
+# CORRECT - Proper process lifecycle with cleanup:
+$proc = Start-Process -FilePath "node" -ArgumentList "server.js" `
+    -WindowStyle Hidden -PassThru
+$procId = $proc.Id  # Save PID for cleanup
+
+try {
+    Start-Sleep 3  # Wait for server startup
+    $response = Invoke-WebRequest -Uri "http://localhost:3000/api/health" `
+        -UseBasicParsing -TimeoutSec 5
+    # Verify response...
+} finally {
+    # MUST kill process even on failure
+    Stop-Process -Id $procId -ErrorAction SilentlyContinue
+}
+```
+
+**Fix - Dynamic Port Allocation (Best Practice):**
+For tests, use dynamic ports to avoid conflicts:
+
+```javascript
+// In server.js - use PORT environment variable or random port
+const PORT = process.env.PORT || 0;  // 0 = random available port
+server.listen(PORT, () => {
+    console.log(`Server on port ${server.address().port}`);
+});
+```
+
+Then capture the actual port from output for verifiers.
+
+---
+
+## Kimi CLI Encoding Issues
+
+### UnicodeEncodeError: 'charmap' codec can't encode character
+
+**Error Message:**
+```
+UnicodeEncodeError: 'charmap' codec can't encode character '\u221a' in position 56
+```
+
+**Root Cause:** Kimi CLI uses the Rich console library which attempts to render Unicode characters (like checkmarks √) to a console configured for Windows code page 1252. This commonly happens when Jest or other tools output Unicode checkmarks.
+
+**Impact:** Non-fatal - the underlying test execution succeeds, but output display fails. Ralph's executor timeout (300s) will catch this.
+
+**Fix - Workarounds:**
+
+1. **Set UTF-8 code page before running:**
+```powershell
+# In your verifier or before running Kimi
+chcp 65001  # Set UTF-8 code page
+$env:PYTHONIOENCODING = "utf-8"
+```
+
+2. **Configure PowerShell for UTF-8:**
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$env:PYTHONIOENCODING = "utf-8"
+```
+
+3. **Filter Unicode from test output:**
+```json
+{
+  "name": "Run tests",
+  "command": "npm test 2>&1 | ForEach-Object { $_ -replace '[\x00-\x1F\x7F-\x9F]', '' }",
+  "timeout_seconds": 120
+}
+```
+
+---
+
+## Port Conflicts During Testing
+
+**Symptoms:** Server start verifiers fail with "Unable to connect" because port is already in use.
+
+**Root Cause:** Previous test runs or the Ralph watchdog may leave Node.js processes running. Windows doesn't automatically free ports when the parent PowerShell exits.
+
+**Prevention - Best Practices:**
+
+1. **Use Dynamic Ports in Tests:**
+```javascript
+// server.js
+const PORT = process.env.PORT || 0;  // 0 = random available port
+const server = app.listen(PORT, () => {
+    const actualPort = server.address().port;
+    console.log(`Server running on port ${actualPort}`);
+    // Write port to file for verifiers to read
+    require('fs').writeFileSync('.server-port', actualPort.toString());
+});
+```
+
+2. **Implement Health Check Verifier:**
+```json
+{
+  "name": "Server health check",
+  "command": "$port=Get-Content .server-port; Invoke-WebRequest -Uri \"http://localhost:$port/health\" -UseBasicParsing",
+  "timeout_seconds": 10
+}
+```
+
+3. **Always Include Cleanup in Verifiers:**
+See "Process Management Issues" section above for proper cleanup patterns.
+
+---
+
+## Ralph Mode Confusion
+
+### Database vs Standalone Mode
+
+**Symptoms:** 
+- `ralph-executor-simple.ps1` fails with `-BeadId` parameter
+- "bd CLI not found" errors
+- Confusion about when `bd` CLI is required
+
+**Explanation:**
+Ralph has two execution modes:
+
+| Mode | Parameter | Requires bd CLI | Use Case |
+|------|-----------|-----------------|----------|
+| Database | `-BeadId` | Yes | Production with beads database |
+| Standalone | `-BeadFile` | No | Development, CI/CD, simple projects |
+
+**Using Standalone Mode (Recommended for most users):**
+```powershell
+# Create bead JSON file
+$bead = @{
+    id = "my-feature"
+    title = "Implement feature"
+    intent = "Add new feature"
+    dod = @{ verifiers = @(...) }
+} | ConvertTo-Json -Depth 10
+$bead | Out-File ".ralph/beads/my-bead.json"
+
+# Run executor with -BeadFile (no bd CLI needed)
+.\scripts\ralph\ralph-executor-simple.ps1 -BeadFile ".ralph/beads/my-bead.json"
+```
+
+**Note:** Ralph automatically detects and uses standalone mode when:
+- `-BeadFile` parameter is provided
+- `bd` CLI is not installed
+- `-Standalone` switch is used
+
+---
+
+## Coverage Threshold Issues
+
+### Coverage Below Threshold Errors
+
+**Symptoms:** Jest coverage check fails with message like:
+```
+Jest: "global" coverage threshold for branches (80%) not met: 79.06%
+```
+
+**Root Cause:** Initial development often has uncovered error handling paths. Setting thresholds too high causes failures.
+
+**Fix - Realistic Thresholds:**
+For initial development, use lower thresholds:
+
+```javascript
+// jest.config.js
+module.exports = {
+  coverageThreshold: {
+    global: {
+      branches: 75,
+      functions: 75,
+      lines: 75,
+      statements: 75
+    }
+  }
+};
+```
+
+**Fix - Incremental Improvement:**
+```javascript
+// jest.config.js - start low, increase as coverage improves
+module.exports = {
+  coverageThreshold: {
+    global: {
+      branches: 75,    // Start here
+      functions: 80,
+      lines: 80,
+      statements: 80
+    }
+  }
+};
+```
+
+**Fix - Disable for Initial Development:**
+```javascript
+// jest.config.js - temporarily disable thresholds
+module.exports = {
+  // Remove or comment out coverageThreshold during initial development
+  // Uncomment and tune after core functionality is complete
+};
+```
+
+---
+
 ## Verification Issues
 
 ### Verifier Timeouts

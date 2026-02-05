@@ -85,12 +85,12 @@ function Run-Test {
 }
 
 # Setup test environment
-$TestDir = ".ralph/live-test-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+# Use absolute path to avoid race conditions with subprocess working directory changes
+$TestDirName = ".ralph/live-test-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "../../..") | Select-Object -ExpandProperty Path
+$TestDir = Join-Path $ProjectRoot $TestDirName
 New-Item -ItemType Directory -Force -Path $TestDir | Out-Null
 Write-Host "Test artifacts in: $TestDir" -ForegroundColor $Gray
-
-# Calculate project root (3 levels up from test script location) for use in tests
-$ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "../../..") | Select-Object -ExpandProperty Path
 
 Write-TestHeader "LIVE MATERIAL TEST - Ralph-Gastown System"
 Write-Host "Start: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor $Gray
@@ -201,12 +201,16 @@ Write-TestHeader "TEST 3: Real Verifier Execution"
 Run-Test "Verifier 1: Directory exists" {
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = "powershell.exe"
-    # Use double quotes and escape properly for variable expansion
-    $command = "Test-Path `"$TestDir`""
+    # Use single-quoted string with escaped single quotes for the path
+    # This handles spaces in paths correctly
+    $testDirEscaped = $TestDir -replace "'", "''"
+    $command = "Test-Path '$testDirEscaped'"
     $psi.Arguments = "-NoProfile -Command `"$command`""
     $psi.RedirectStandardOutput = $true
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
+    # Explicitly set working directory to ensure consistent behavior
+    $psi.WorkingDirectory = $ProjectRoot
     
     $proc = [System.Diagnostics.Process]::Start($psi)
     $completed = $proc.WaitForExit(10000)
